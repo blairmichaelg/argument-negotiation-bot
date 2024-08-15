@@ -1,55 +1,76 @@
-from typing import AsyncIterable, Dict
+from typing import AsyncIterable
 import fastapi_poe as fp
 from utils.prompt_engineering import create_prompt
+from utils.external_api import fetch_salary_data
+import re
 
-async def handle_functionality(request: fp.QueryRequest, job_details: str) -> AsyncIterable[fp.PartialResponse]:
-    prompt = create_prompt("salary_negotiation", job_details)
-    
+async def handle_salary_negotiation(request: fp.QueryRequest, user_input: str, user_data: dict) -> AsyncIterable[fp.PartialResponse]:
+    """Handles user requests for salary negotiation advice."""
+
+    job_details = user_input.replace("salary", "").strip()
+    prompt = create_prompt("salary_negotiation", topic=job_details)
+
     yield fp.PartialResponse(text="Analyzing the job details and preparing negotiation advice...\n\n")
-    
+
     # Initial advice
-    async for msg in fp.stream_request(request, "GPT-4", request.access_key, prompt=prompt):
+    async for msg in fp.stream_request(request, "GPT-4", prompt=prompt):
         yield fp.PartialResponse(text=msg.text)
-    
-    # Market research
-    yield fp.PartialResponse(text="\n\nConducting market research...\n\n")
-    market_data = await get_market_data(request, job_details)
-    for category, data in market_data.items():
-        yield fp.PartialResponse(text=f"{category}:\n{data}\n\n")
-    
-    # Negotiation strategies
-    yield fp.PartialResponse(text="Recommended negotiation strategies:\n\n")
-    strategies = await get_negotiation_strategies(request, job_details, market_data)
-    yield fp.PartialResponse(text=strategies)
-    
-    yield fp.PartialResponse(text="\n\nWould you like to practice a negotiation scenario or get advice on specific negotiation points?")
 
-async def get_market_data(request: fp.QueryRequest, job_details: str) -> Dict[str, str]:
-    market_prompt = f"Provide market research data for the following job: {job_details}. Include average salary range, typical benefits, and industry trends."
-    market_data = {}
-    async for msg in fp.stream_request(request, "GPT-3.5-Turbo", request.access_key, prompt=market_prompt):
-        # Parse the response to extract market data
-        # This is a simplified version; in a real implementation, you'd parse the response more robustly
-        sections = msg.text.split('\n\n')
-        for section in sections:
-            if ':' in section:
-                key, value = section.split(':', 1)
-                market_data[key.strip()] = value.strip()
-    return market_data
+    # Fetch and provide salary data
+    try:
+        job_title, location = extract_job_and_location(job_details)
+        salary_data = await asyncio.to_thread(
+            fetch_salary_data, job_title, location
+        )
 
-async def get_negotiation_strategies(request: fp.QueryRequest, job_details: str, market_data: Dict[str, str]) -> str:
-    strategy_prompt = f"Given the job details: {job_details}\n\nAnd the following market data:\n"
-    for category, data in market_data.items():
-        strategy_prompt += f"{category}: {data}\n"
-    strategy_prompt += "\nProvide specific negotiation strategies and talking points."
-    
-    async for msg in fp.stream_request(request, "Claude-instant", request.access_key, prompt=strategy_prompt):
-        return msg.text  # Return the first (and likely only) message as the strategies
+        if "error" in salary_data:
+            yield fp.PartialResponse(
+                text=f"Salary Insights: {salary_data['error']}"
+            )
+        else:
+            yield fp.PartialResponse(
+                text=f"Salary Insights:\nAverage Salary: ${salary_data['average_salary']} {salary_data['currency']}"
+            )
+    except Exception as e:
+        yield fp.PartialResponse(
+            text=f"Sorry, there was an error fetching salary data: {e}"
+        )
 
-async def process_functionality(job_details: str) -> str:
-    return f"Preparing salary negotiation advice for: {job_details[:50]}..."  # Truncate for brevity
+    yield fp.PartialResponse(text="\n\nWould you like to:\n"
+                                   "1. Practice a negotiation scenario?\n"
+                                   "2. Get advice on specific negotiation points?\n"
+                                   "3. Do something else?")
+
+    # Handle user choice
+    user_choice = await request.get_next_message()
+    if "1" in user_choice.content or "practice" in user_choice.content.lower():
+        yield fp.PartialResponse(text="Okay, let's practice. What's your proposed salary?")
+        user_proposal = await request.get_next_message()
+        async for msg in await simulate_negotiation(request, job_details, user_proposal.content):
+            yield msg
+    elif "2" in user_choice.content or "advice" in user_choice.content.lower():
+        yield fp.PartialResponse(text="Sure, tell me about the specific negotiation point you need advice on.")
+        # ... (Handle specific negotiation advice)
+    else:
+        yield fp.PartialResponse(text="Alright, what else would you like to do?")
+        # ... (Handle other functionalities or end the interaction)
+
+def extract_job_and_location(job_details: str) -> tuple[str, str]:
+    """Extract job title and location from user input."""
+    job_title = ""
+    location = ""
+
+    match = re.search(r"job title is\s*([^\.]+)", job_details, re.IGNORECASE)
+    if match:
+        job_title = match.group(1).strip()
+
+    match = re.search(r"location is\s*([^\.]+)", job_details, re.IGNORECASE)
+    if match:
+        location = match.group(1).strip()
+
+    return job_title, location
 
 async def simulate_negotiation(request: fp.QueryRequest, job_details: str, user_proposal: str) -> AsyncIterable[fp.PartialResponse]:
     simulation_prompt = f"Simulate a salary negotiation for this job: {job_details}\n\nThe candidate has proposed: {user_proposal}\n\nProvide a realistic employer response and potential counter-offer."
-    async for msg in fp.stream_request(request, "GPT-4", request.access_key, prompt=simulation_prompt):
+    async for msg in fp.stream_request(request, "GPT-4", prompt=simulation_prompt):
         yield fp.PartialResponse(text=msg.text)

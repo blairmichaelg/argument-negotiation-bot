@@ -2,32 +2,57 @@ from typing import AsyncIterable, Dict
 import fastapi_poe as fp
 from utils.prompt_engineering import create_prompt
 
-async def handle_functionality(request: fp.QueryRequest, statement: str) -> AsyncIterable[fp.PartialResponse]:
-    prompt = create_prompt("fact_check", statement)
-    
+async def handle_fact_check(request: fp.QueryRequest, user_input: str, user_data: dict) -> AsyncIterable[fp.PartialResponse]:
+    """Handles user requests for fact-checking."""
+
+    statement = user_input.replace("fact-check", "").strip()
+    prompt = create_prompt("fact_check", topic=statement)
+
     # Initial fact check
     yield fp.PartialResponse(text="Analyzing the statement...\n\n")
-    async for msg in fp.stream_request(request, "GPT-3.5-Turbo", request.access_key, prompt=prompt):
+    async for msg in fp.stream_request(request, "GPT-3.5-Turbo", prompt=prompt):
         yield fp.PartialResponse(text=msg.text)
-    
+
     # Detailed research
     yield fp.PartialResponse(text="\n\nConducting detailed research...\n\n")
     research_results = await conduct_research(request, statement)
-    
+    for source, info in research_results.items():
+        yield fp.PartialResponse(text=f"{source}: {info}\n\n")
+
     # Final verdict
     yield fp.PartialResponse(text="\n\nFinal verdict:\n\n")
     verdict = await get_final_verdict(request, statement, research_results)
     yield fp.PartialResponse(text=verdict)
-    
-    yield fp.PartialResponse(text="\n\nWould you like to explore the sources or check another statement?")
+
+    yield fp.PartialResponse(
+        text="\n\nWould you like to: \n"
+        "1. Explore related facts?\n"
+        "2. Check another statement?\n"
+        "3. Do something else?"
+    )
+
+    # Handle user choice
+    user_choice = await request.get_next_message()
+    if "1" in user_choice.content or "related" in user_choice.content.lower():
+        async for msg in await suggest_related_facts(request, statement):
+            yield msg
+    elif "2" in user_choice.content or "check" in user_choice.content.lower():
+        yield fp.PartialResponse(text="Okay, please provide the new statement.")
+        # ... (Handle the new statement fact-check - re-use this function)
+    else:
+        yield fp.PartialResponse(text="Alright, what else would you like to do?")
+        # ... (Handle other functionalities or end the interaction)
 
 async def conduct_research(request: fp.QueryRequest, statement: str) -> Dict[str, str]:
     research_prompt = f"Provide credible sources and additional context for the statement: {statement}"
     sources = {}
-    async for msg in fp.stream_request(request, "Claude-instant", request.access_key, prompt=research_prompt):
-        # Parse the response to extract sources
-        # This is a simplified version; in a real implementation, you'd parse the response more robustly
-        sources[f"Source {len(sources) + 1}"] = msg.text
+    async for msg in fp.stream_request(request, "Claude-instant", prompt=research_prompt):
+        # Parse the response to extract sources (improve parsing logic)
+        sections = msg.text.split('\n\n')
+        for section in sections:
+            if ':' in section:
+                key, value = section.split(':', 1)
+                sources[key.strip()] = value.strip()
         if len(sources) >= 3:  # Limit to 3 sources for brevity
             break
     return sources
@@ -37,14 +62,13 @@ async def get_final_verdict(request: fp.QueryRequest, statement: str, research_r
     for source, info in research_results.items():
         verdict_prompt += f"{source}: {info}\n"
     verdict_prompt += "\nProvide a final fact-check verdict."
-    
-    async for msg in fp.stream_request(request, "GPT-4", request.access_key, prompt=verdict_prompt):
-        return msg.text  # Return the first (and likely only) message as the verdict
 
-async def process_functionality(statement: str) -> str:
-    return f"Fact-checking statement: {statement}"
+    verdict = ""
+    async for msg in fp.stream_request(request, "GPT-4", prompt=verdict_prompt):
+        verdict += msg.text
+    return verdict
 
 async def suggest_related_facts(request: fp.QueryRequest, statement: str) -> AsyncIterable[fp.PartialResponse]:
     prompt = f"Suggest related facts or context for further exploration based on this statement: {statement}"
-    async for msg in fp.stream_request(request, "GPT-3.5-Turbo", request.access_key, prompt=prompt):
+    async for msg in fp.stream_request(request, "GPT-3.5-Turbo", prompt=prompt):
         yield fp.PartialResponse(text=msg.text)

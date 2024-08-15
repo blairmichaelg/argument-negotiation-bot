@@ -1,64 +1,53 @@
-"""Error handling utilities for the Argument and Negotiation Master Bot."""
-
 import logging
 from typing import Union
 
 import fastapi_poe as fp
 
 # Configure logging
-logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.ERROR, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
+
 class BotError(Exception):
-    """Custom exception class for bot-specific errors."""
+    """Custom exception for bot-specific errors."""
+
     pass
 
-async def handle_error(e: Exception) -> Union[fp.ErrorResponse, fp.PartialResponse]:
-    """
-    Handle errors and return appropriate responses.
 
-    Args:
-        e (Exception): The exception that occurred.
-
-    Returns:
-        Union[fp.ErrorResponse, fp.PartialResponse]: An error response for the user.
-    """
+async def handle_error(
+    e: Exception,
+) -> Union[fp.ErrorResponse, fp.PartialResponse]:
+    """Handles errors, providing appropriate user feedback and logging."""
     if isinstance(e, BotError):
-        logger.warning(f"Bot-specific error occurred: {str(e)}")
+        logger.warning(f"BotError: {str(e)}")
         return fp.PartialResponse(
-            text=f"I encountered an issue: {str(e)}. Please try rephrasing your request."
+            text=f"I encountered an issue: {str(e)}. Please try rephrasing."
         )
     elif isinstance(e, fp.PoeException):
-        logger.error(f"Poe API error occurred: {str(e)}")
+        logger.error(f"Poe API Error: {str(e)}")
         return fp.ErrorResponse(
-            text="An error occurred while communicating with the Poe API. Please try again later.",
+            text="There's an issue connecting to the Poe API. Please retry later.",
             raw_response=str(e),
-            allow_retry=True
+            allow_retry=True,
         )
     else:
-        logger.exception("An unexpected error occurred")
+        logger.exception("Unexpected Error:")
         return fp.ErrorResponse(
-            text="An unexpected error occurred. Our team has been notified. Please try again later.",
+            text="An unexpected error occurred. We've been notified. Please try again later.",
             raw_response=str(e),
-            allow_retry=False
+            allow_retry=False,
         )
 
+
 def validate_input(input_string: str, max_length: int = 1000) -> str:
-    """
-    Validate and sanitize user input.
-
-    Args:
-        input_string (str): The input string to validate.
-        max_length (int, optional): Maximum allowed length of the input. Defaults to 1000.
-
-    Returns:
-        str: Sanitized input string.
-
-    Raises:
-        BotError: If the input is invalid or too long.
-    """
-    if not input_string.strip():
+    """Validates user input, ensuring it's not empty and within length limits."""
+    input_string = input_string.strip()
+    if not input_string:
         raise BotError("Input cannot be empty.")
     if len(input_string) > max_length:
-        raise BotError(f"Input exceeds maximum length of {max_length} characters.")
-    return input_string.strip()
+        raise BotError(
+            f"Input is too long. Please limit it to {max_length} characters."
+        )
+    return input_string
