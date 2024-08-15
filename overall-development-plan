@@ -1,0 +1,252 @@
+# Argument and Negotiation Master Bot: Development Guide
+
+## Project Structure
+
+```markdown
+argument-negotiation-bot/
+├── main.py
+├── requirements.txt
+├── README.md
+├── .gitignore
+├── .pre-commit-config.yaml
+├── pyproject.toml
+├── core/
+│   ├── __init__.py
+│   ├── debate.py
+│   ├── negotiation.py
+│   ├── fact_check.py
+│   ├── bias_detection.py
+│   ├── contract_analysis.py
+│   └── salary_negotiation.py
+├── utils/
+│   ├── __init__.py
+│   ├── error_handling.py
+│   └── prompt_engineering.py
+└── tests/
+    ├── __init__.py
+    ├── test_debate.py
+    ├── test_negotiation.py
+    ├── test_fact_check.py
+    ├── test_bias_detection.py
+    ├── test_contract_analysis.py
+    └── test_salary_negotiation.py
+```
+
+## 1. Core Functionality Modules
+
+Each core functionality should be implemented in its own module within the `core/` directory. Here's the structure for each module:
+
+```python
+# core/functionality_name.py
+
+from typing import AsyncIterable
+import fastapi_poe as fp
+from utils.prompt_engineering import create_prompt
+
+async def handle_functionality(request: fp.QueryRequest, topic: str) -> AsyncIterable[fp.PartialResponse]:
+    prompt = create_prompt("functionality_name", topic)
+    async for msg in fp.stream_request(request, "BotName", request.access_key):
+        yield fp.PartialResponse(text=msg.text)
+    yield fp.PartialResponse(text="\n\nFollow-up question or instruction")
+
+async def process_functionality(topic: str) -> str:
+    # Implement any additional processing logic here
+    return processed_result
+```
+
+## 2. Main Bot Class
+
+The main `ArgumentNegotiationBot` class should be structured as follows in `main.py`:
+
+```python
+import fastapi_poe as fp
+from typing import AsyncIterable
+from core import debate, negotiation, fact_check, bias_detection, contract_analysis, salary_negotiation
+
+class ArgumentNegotiationBot(fp.PoeBot):
+    async def get_response(self, request: fp.QueryRequest) -> AsyncIterable[fp.PartialResponse]:
+        user_input = request.query[-1].content.lower()
+        
+        functionality_map = {
+            "debate": debate,
+            "negotiation": negotiation,
+            "fact-check": fact_check,
+            "cognitive bias": bias_detection,
+            "contract": contract_analysis,
+            "salary": salary_negotiation
+        }
+        
+        for key, module in functionality_map.items():
+            if key in user_input:
+                async for msg in module.handle_functionality(request, user_input):
+                    yield msg
+                return
+        
+        yield fp.PartialResponse(text="I'm sorry, I didn't understand your request. Can you specify which feature you'd like to use?")
+
+    async def get_settings(self, setting: fp.SettingsRequest) -> fp.SettingsResponse:
+        return fp.SettingsResponse(
+            server_bot_dependencies={
+                "GPT-3.5-Turbo": 5,
+                "Claude-instant": 3,
+                "GPT-4": 2
+            },
+            allow_attachments=True,
+            expand_text_attachments=True,
+            enable_image_comprehension=False,
+            introduction_message="Welcome to the Argument and Negotiation Master Bot. How can I assist you today?",
+            enable_multi_bot_chat_prompting=True
+        )
+```
+
+## 3. Error Handling
+
+Implement a centralized error handling module in `utils/error_handling.py`:
+
+```python
+import fastapi_poe as fp
+import logging
+
+async def handle_error(e: Exception) -> fp.ErrorResponse:
+    logging.error(f"An error occurred: {str(e)}")
+    return fp.ErrorResponse(
+        text="An error occurred. Please try again later.",
+        raw_response=str(e),
+        allow_retry=True
+    )
+```
+
+## 4. Prompt Engineering
+
+Create a utility for managing prompts in `utils/prompt_engineering.py`:
+
+```python
+PROMPTS = {
+    "debate": "Generate two opposing viewpoints on the topic: {}",
+    "negotiation": "Create a negotiation scenario: {}",
+    "fact_check": "Fact-check the following statement: {}",
+    "bias_detection": "Analyze the following argument for cognitive biases: {}",
+    "contract_analysis": "Analyze the following contract clause: {}",
+    "salary_negotiation": "Provide salary negotiation advice for: {}"
+}
+
+def create_prompt(functionality: str, topic: str) -> str:
+    return PROMPTS[functionality].format(topic)
+```
+
+## 5. Testing
+
+Implement unit tests for each core functionality in the `tests/` directory:
+
+```python
+# tests/test_functionality.py
+
+import pytest
+from core import functionality_name
+
+@pytest.mark.asyncio
+async def test_functionality():
+    result = await functionality_name.process_functionality("test input")
+    assert isinstance(result, str)
+    assert len(result) > 0
+```
+
+## 6. Deployment
+
+Use Modal for deployment. Add this to your `main.py`:
+
+```python
+from modal import Image, Stub, asgi_app
+
+REQUIREMENTS = ["fastapi-poe==0.0.36"]
+image = Image.debian_slim().pip_install(*REQUIREMENTS)
+stub = Stub("argument-negotiation-bot")
+
+@stub.function(image=image)
+@asgi_app()
+def fastapi_app():
+    bot = ArgumentNegotiationBot()
+    app = fp.make_app(bot, allow_without_key=True)
+    return app
+```
+
+## 7. Best Practices and Consistencies
+
+- Use type hints consistently throughout the codebase.
+- Follow PEP 8 style guidelines for Python code.
+- Use async/await syntax for all asynchronous operations.
+- Implement proper error handling and logging in all modules.
+- Use environment variables for sensitive information (e.g., API keys).
+- Implement input validation and sanitization for all user inputs.
+- Use descriptive variable and function names.
+- Write comprehensive docstrings for all functions and classes.
+- Implement proper exception handling and custom exceptions where necessary.
+
+## 8. Poe-Specific Optimizations
+
+- Utilize the ability to make up to 10 calls per user message efficiently.
+- Implement server_bot_dependencies in the settings to declare bot usage.
+- Use the stream_request function to invoke other bots.
+- Implement error handling using Poe's error response system.
+- Utilize Poe's file handling capabilities for document analysis if needed.
+- Implement multi-bot support for more complex scenarios.
+
+## 9. Development Sequence
+
+1. Set up project structure and environment.
+2. Implement core functionality modules.
+3. Develop main bot class and integrate core functionalities.
+4. Implement error handling and prompt engineering utilities.
+5. Write unit tests for all functionalities.
+6. Implement deployment configuration using Modal.
+7. Perform integration testing and debug.
+8. Optimize performance and implement Poe-specific features.
+9. Conduct thorough testing, including edge cases and error scenarios.
+10. Prepare documentation and deployment instructions.
+
+## 10. Additional Configuration
+
+### Pre-commit Configuration
+
+Create a `.pre-commit-config.yaml` file:
+
+```yaml
+repos:
+  - repo: https://github.com/pre-commit/mirrors-black
+    rev: v23.3.0
+    hooks:
+      - id: black
+  - repo: https://github.com/pre-commit/mirrors-flake8
+    rev: v6.0.0
+    hooks:
+      - id: flake8
+  - repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+```
+
+### Pyproject Configuration
+
+Create a `pyproject.toml` file:
+
+```toml
+[tool.black]
+line-length = 88
+target-version = ['py38']
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+line_length = 88
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+```
+
+This development guide provides a solid foundation for building the Argument and Negotiation Master Bot. It emphasizes modularity, consistency, and best practices while leveraging Poe-specific features for optimal performance and functionality.

@@ -1,0 +1,8 @@
+[tool.black]
+line-length = 88  # Matches Flake8
+skip-string-normalization = true  # Avoids changing string quotes
+
+[tool.isort]
+line_length = 88  # Matches Flake8
+known_third_party = ["fastapi_poe"]  # Add any third-party libraries
+default_section = "THIRDPARTY"
