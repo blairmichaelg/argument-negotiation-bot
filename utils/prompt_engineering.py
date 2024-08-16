@@ -1,5 +1,6 @@
 from typing import Dict, Any
 
+# Dictionary to store prompt templates for different functionalities
 PROMPTS: Dict[str, str] = {
     "debate": "Generate two opposing viewpoints on the topic: {topic}. Provide clear arguments for both sides, citing relevant facts or examples.",
     "negotiation": "Create a realistic negotiation scenario based on: {topic}. Outline the interests, positions, and potential areas for compromise for both parties involved.",
@@ -11,7 +12,19 @@ PROMPTS: Dict[str, str] = {
 
 
 def create_prompt(functionality: str, **kwargs: Any) -> str:
-    """Creates a formatted prompt for the specified functionality."""
+    """
+    Creates a formatted prompt for the specified functionality.
+
+    Parameters:
+        functionality (str): The name of the functionality for which to create a prompt.
+        **kwargs: Additional keyword arguments to format the prompt.
+
+    Returns:
+        str: The formatted prompt string.
+
+    Raises:
+        ValueError: If the functionality is not found in the PROMPTS dictionary.
+    """
     try:
         prompt_template = PROMPTS[functionality]
         return prompt_template.format(**kwargs)

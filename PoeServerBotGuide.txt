@@ -1,0 +1,1199 @@
+Welcome to Poe for Creators
+Poe is a platform for people to discover and chat with AI-powered bots. In addition to providing access to popular bots, Poe allows any individual or business to create new bots.
+
+Reasons to create a bot on Poe
+Distribution: Poe's bot recommendation system allows you to reach a large audience for your bot for free. Users can also conveniently share a chat with your bot both internally on Poe and externally, leading to even more exposure for your bot.
+Monetization: Poe lets you easily generate revenue from users all around the world. You can set a price per message that you'll be paid for every message to your bot, and you can also get referral fees when your bot causes new users to subscribe to Poe.
+Costs: Operating a publicly available bot powered by large language models is prohibitively expensive for most, but creating a bot on Poe allows you to offload model inference costs entirely to Poe.
+Multi-platform UI: Poe's native presence on all major platforms (Web, iOS, Android, MacOS, and Windows) means that your users have a great, consistent experience with your bot no matter what device they are on, with login and synchronized history taken care of by the platform.
+Model independence: Building on Poe lets you build your product using models from all different providers (OpenAI, Anthropic, Google, and more, and open source models like Mistral, Llama 2 or SDXL). Poe is a neutral platform and so by building here, you can continually adapt your product use any combination of the best technologies as they are created, no matter who each one is made by.
+Fundraising: If your product gets meaningful usage on Poe, that is an important signal to potential investors. We maintain a list of high quality investors who have told us they are interested in hearing about successful developers that are raising money and, with your permission, we will email them and broker connections. (details)
+In summary, Poe lets creators focus entirely on the unique part of their bot: how it will respond. The platform handles everything else needed to bring it to a large audience, to operate it at scale, and to build a business.
+
+Ways to create a bot on Poe
+We provide two different creator products and depending on your needs and use case, one or the other might be a better fit for you.
+
+Prompt bots are bots built on top of other bots (for example Claude-instant, GPT-4, or Llama 2) using plain-text instructions that the bot will stick to during conversation with users. To learn how to build a prompt bot, check out our prompt bot tutorial.
+Server bots are bots powered by a custom backend that runs your code in response to every user message. In addition, building a server bot with Poe allows you to call any other bot (like GPT-3.5-Turbo, Claude-instant, or any prompt bot) on Poe for free, which can significantly enhance the capabilities of your bot without you having to incur a large cost. To learn how to build a server bot, check out our quick start.
+
+
+
+Quick Start
+In this quick start guide, we will build a bot server in Python and then integrate it with Poe. Once you have created a Poe bot powered by your server, any Poe user can interact with it. The following diagram might be useful in visualizing how your bot server fits into Poe.
+
+
+
+For more information on Poe server bots, check out the Poe Protocol Specification.
+
+Deploying your bot
+We recommend using Modal to deploy your bot, but you can also use any cloud provider of your choice; all you need to do is to make the bot server available at a publicly available URL and once you have that, you can skip to integrating it with Poe. In order to use Modal to deploy your bot, do the following.
+
+Step 1: Install the Modal client
+Make sure you have Python installed. Open a terminal and run pip install modal-client. You might have to use pip3 instead of pip depending on your version of Python.
+
+If you have previously installed modal but run into modal related errors, you might resolve issue by updating the modal package running pip install modal-client --upgrade
+
+Step 2: Setup your Modal token
+This step involves setting up access to modal from your terminal. You only need to do this once for your computer. In the terminal, run modal token new --source poe. If you run into a "command not found" error, try this.
+
+If that command runs successfully, you will taken to your web browser where you will be asked to log into modal using your Github account.
+
+
+
+After you login, click on "create token". You will be prompted to close the browser window after that.
+
+
+
+Step 3: Clone the starter code and deploy to Modal
+In your terminal, run:
+
+git clone https://github.com/poe-platform/server-bot-quick-start
+cd server-bot-quick-start
+pip install -r requirements.txt
+modal deploy echobot.py
+Modal will now deploy your app and output two urls: a) the endpoint at which your app is hosted b) an internal page where you can monitor your app. You will be using the former to integrate your bot into Poe.
+
+Integrating with Poe
+Once you have a bot running under a publicly accessible URL, it is time to connect it to Poe. You can do that on your desktop by going to the bot creation form. You can customize how your bot looks by providing a picture, name and description. After you fill out the server URL and click "create bot", your bot should be ready for use on all Poe clients.
+
+Upon bot creation or bot settings update, remember to sync bot settings so that the latest bot settings is adopted.
+
+Iterating on your bot
+For faster iteration on your bot, we recommend using Modal's serve command (as in modal serve echobot.py). On running that command, Modal will deploy an ephemeral version of your app which live updates in response to any code change. In addition, any print/debug statements will output to your terminal.
+The README provides a brief description of the other example bots included in the repo. Feel free to iterate upon and/or deploy them.
+Where to go from here
+One of the advantages of building a bot on Poe is the ability to invoke other Poe bots. In order to learn how to do that check out: accessing-other-bots-on-poe.md.
+Check out other detailed guides that show you how to enable specific features:
+rendering-an-image-in-the-response.md
+enabling-file-upload-for-your-bot.md
+setting-an-introduction-message.md
+Refer to the specification to understand the full capabilities offered by Poe server bots.
+Check out the fastapi-poe library, which you can use as a base for creating Poe bots.
+
+Functional Guides
+If you are just getting started with server bots, we recommend checking out our quick start guide. The following guides provide examples of accomplishing specific things with your bot.
+
+The examples assume that you have installed the latest version of fastapi_poe (you can install this using pip by running pip install fastapi_poe.
+The full code examples also assume that you are hosting your bot on Modal. Although we recommend Modal for it's simplicity, you should be able to deploy your server bot on any cloud provider. To learn how to setup Modal, please follow Steps 1 and 2 in our Quick start. If you already have Modal set up, simply copy the full code examples into a file called main.py and then run modal deploy main.py. Modal will then deploy your bot server to the cloud and output the server url. Use that url when creating a server bot on Poe.
+Accessing other bots on Poe
+The Poe bot query API allows creators to invoke other bots on Poe (which includes bots created by Poe like GPT-3.5-Turbo and Claude-Instant and bots created by other creators) and this access is provided for free so that creators do not have to worry about LLM costs. For every user message, server bot creators get to make up to ten calls to another bot of their choice.
+
+Declare dependency in your PoeBot class
+You have to declare your bot dependencies using the settings endpoint.
+
+Python
+
+async def get_settings(self, setting: fp.SettingsRequest) -> fp.SettingsResponse:
+    return fp.SettingsResponse(server_bot_dependencies={"GPT-3.5-Turbo": 1})
+In your get_response handler, use the stream_request function to invoke any bot you want. The following is an example where we forward the user's query to GPT-3.5-Turbo and return the result.
+
+Python
+
+async def get_response(
+    self, request: fp.QueryRequest
+) -> AsyncIterable[fp.PartialResponse]:
+    async for msg in fp.stream_request(
+        request, "GPT-3.5-Turbo", request.access_key
+    ):
+        yield msg
+The final code (including the setup code you need to host this on Modal) that goes into your main.py is as follows:
+
+Python
+
+from __future__ import annotations
+from typing import AsyncIterable
+from modal import Image, Stub, asgi_app
+import fastapi_poe as fp
+
+class GPT35TurboBot(fp.PoeBot):
+    async def get_response(
+        self, request: fp.QueryRequest
+    ) -> AsyncIterable[fp.PartialResponse]:
+        async for msg in fp.stream_request(
+            request, "GPT-3.5-Turbo", request.access_key
+        ):
+            yield msg
+
+    async def get_settings(self, setting: fp.SettingsRequest) -> fp.SettingsResponse:
+        return fp.SettingsResponse(server_bot_dependencies={"GPT-3.5-Turbo": 1})
+    
+REQUIREMENTS = ["fastapi-poe==0.0.36"]
+image = Image.debian_slim().pip_install(*REQUIREMENTS)
+stub = Stub("turbo-example-poe")
+
+@stub.function(image=image)
+@asgi_app()
+def fastapi_app():
+    bot = GPT35TurboBot()
+    app = fp.make_app(bot, allow_without_key=True)
+    return app
+Now, before you use the bot, you will have to follow the steps listed here in order to get Poe to fetch your bots settings (one time only after you override get_settings). Once that is done, try to use your bot on Poe and you will see the response from GPT-3.5-Turbo. You can modify the code and do more interesting things (like apply some business logic on the response or conditionally call another API).
+
+
+
+Using OpenAI function calling
+The Poe API allows you to use OpenAI function calling when accessing OpenAI models. In order to use this feature, you will simply need to provide a tools list which contains objects describing your function and an executables list which contains functions that correspond to the tools list. The following is an example.
+
+Python
+
+def get_current_weather(location, unit="fahrenheit"):
+    """Get the current weather in a given location"""
+    if "tokyo" in location.lower():
+        return json.dumps({"location": "Tokyo", "temperature": "11", "unit": unit})
+    elif "san francisco" in location.lower():
+        return json.dumps(
+            {"location": "San Francisco", "temperature": "72", "unit": unit}
+        )
+    elif "paris" in location.lower():
+        return json.dumps({"location": "Paris", "temperature": "22", "unit": unit})
+    else:
+        return json.dumps({"location": location, "temperature": "unknown"})
+
+
+tools_executables = [get_current_weather]
+
+tools_dict_list = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_current_weather",
+            "description": "Get the current weather in a given location",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {
+                        "type": "string",
+                        "description": "The city and state, e.g. San Francisco, CA",
+                    },
+                    "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]},
+                },
+                "required": ["location"],
+            },
+        },
+    }
+]
+tools = [fp.ToolDefinition(**tools_dict) for tools_dict in tools_dict_list]
+Additionally, you will need to define a dependency of two calls on an OpenAI model of your choice (in this case, the GPT-3.5-Turbo). You need a dependency of two because as part of the OpenAI function calling flow, you need to call OpenAI twice. Adjust this dependency limit if you want to make more than one function calling request while computing your response.
+
+Python
+
+async def get_settings(self, setting: fp.SettingsRequest) -> fp.SettingsResponse:
+    return fp.SettingsResponse(server_bot_dependencies={"GPT-3.5-Turbo": 2})
+The final code (including the setup code you need to host this on Modal) that goes into your main.py is as follows:
+
+Python
+
+from __future__ import annotations
+
+import json
+from typing import AsyncIterable
+
+import fastapi_poe as fp
+from modal import Image, Stub, asgi_app
+
+
+def get_current_weather(location, unit="fahrenheit"):
+    """Get the current weather in a given location"""
+    if "tokyo" in location.lower():
+        return json.dumps({"location": "Tokyo", "temperature": "11", "unit": unit})
+    elif "san francisco" in location.lower():
+        return json.dumps(
+            {"location": "San Francisco", "temperature": "72", "unit": unit}
+        )
+    elif "paris" in location.lower():
+        return json.dumps({"location": "Paris", "temperature": "22", "unit": unit})
+    else:
+        return json.dumps({"location": location, "temperature": "unknown"})
+
+
+tools_executables = [get_current_weather]
+
+tools_dict_list = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_current_weather",
+            "description": "Get the current weather in a given location",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {
+                        "type": "string",
+                        "description": "The city and state, e.g. San Francisco, CA",
+                    },
+                    "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]},
+                },
+                "required": ["location"],
+            },
+        },
+    }
+]
+tools = [fp.ToolDefinition(**tools_dict) for tools_dict in tools_dict_list]
+
+
+class GPT35FunctionCallingBot(fp.PoeBot):
+    async def get_response(
+        self, request: fp.QueryRequest
+    ) -> AsyncIterable[fp.PartialResponse]:
+        async for msg in fp.stream_request(
+            request,
+            "GPT-3.5-Turbo",
+            request.access_key,
+            tools=tools,
+            tool_executables=tools_executables,
+        ):
+            yield msg
+
+    async def get_settings(self, setting: fp.SettingsRequest) -> fp.SettingsResponse:
+        return fp.SettingsResponse(server_bot_dependencies={"GPT-3.5-Turbo": 2})
+
+
+REQUIREMENTS = ["fastapi-poe==0.0.36"]
+image = Image.debian_slim().pip_install(*REQUIREMENTS)
+stub = Stub("function-calling-poe")
+
+
+@stub.function(image=image)
+@asgi_app()
+def fastapi_app():
+    bot = GPT35FunctionCallingBot()
+    # Optionally, provide your Poe access key here:
+    # 1. You can go to https://poe.com/create_bot?server=1 to generate an access key.
+    # 2. We strongly recommend using a key for a production bot to prevent abuse,
+    # but the starter examples disable the key check for convenience.
+    # 3. You can also store your access key on modal.com and retrieve it in this function
+    # by following the instructions at: https://modal.com/docs/guide/secrets
+    # POE_ACCESS_KEY = ""
+    # app = make_app(bot, access_key=POE_ACCESS_KEY)
+    app = fp.make_app(bot, allow_without_key=True)
+    return app
+Once your bot is up, update your bot's settings (one time only after you override get_settings) by following the steps listed here.
+
+
+
+Rendering an image in your response
+The Poe API allows you to embed images in your bot's response using Markdown syntax. The following is an example implementation describing a bot that returns a static response containing an image.
+
+Python
+
+from typing import AsyncIterable
+from modal import Image, Stub, asgi_app
+import fastapi_poe as fp
+
+IMAGE_URL = "https://images.pexels.com/photos/46254/leopard-wildcat-big-cat-botswana-46254.jpeg"
+
+class SampleImageResponseBot(fp.PoeBot):
+    async def get_response(
+        self, request: fp.QueryRequest
+    ) -> AsyncIterable[fp.PartialResponse]:
+        yield fp.PartialResponse(text=f"This is a test image. ![leopard]({IMAGE_URL})")
+    
+REQUIREMENTS = ["fastapi-poe==0.0.36"]
+image = Image.debian_slim().pip_install(*REQUIREMENTS)
+stub = Stub("image-response-poe")
+
+@stub.function(image=image)
+@asgi_app()
+def fastapi_app():
+    bot = SampleImageResponseBot()
+    app = fp.make_app(bot, allow_without_key=True)
+    return app
+The following is what the response looks like for someone using the above described bot.
+
+
+
+Enabling file upload for your bot
+The Poe API allows your bot to takes files as input. There are several settings designed to streamline the process of enabling file uploads for your bot:
+
+allow_attachments (default False): Turning this on will allow Poe users to send files to your bot. Attachments will be sent as attachment objects with url, content_type, and name.
+expand_text_attachments (default True): If allow_attachments=True, Poe will parse text files and send their content in the parsed_content field of the attachment object.
+enable_image_comprehension (default False): If allow_attachments=True, Poe will use image vision to generate a description of image attachments and send their content in the parsed_content field of the attachment object. If this is enabled, the Poe user will only be able to send at most one image per message due to image vision limitations.
+Python
+
+async def get_settings(self, setting: fp.SettingsRequest) -> fp.SettingsResponse:
+    return fp.SettingsResponse(
+      allow_attachments=True, expand_text_attachments=True, enable_image_comprehension=True
+    )
+You can update settings by following the steps listed here.
+
+That's it! Your bot should now be able to handle image and text attachments in addition to the user's chat input. 🎉
+
+Note: If you have either attachment parsing setting on (expand_text_attachments or enable_image_comprehension), fastapi_poe will automatically add user-role messages containing each file's parsed_content into the conversation prior to the last user message. See templates.py for how the file contents are added. Note that because this adds additional user-role messages to the conversation, if the LLM you are using requires role alternation between the bot and the user, you will need to reformat the conversation. make_prompt_author_role_alternated is provided to help with that.
+
+If you would like to disable the file content insertion, you can use should_insert_attachment_messages=False when initializing your PoeBot class. You can also override insert_attachment_messages() if you want to use your own templates.
+
+Python
+
+bot = YourBot(should_insert_attachment_messages=False)  
+app = make_app(bot)
+Parsing your own files
+If your expected filetypes are not supported, or you want to perform more complex operations and would rather handle the file contents yourself, that is also possible using the file url, which is passed in through the attachment object. Here is an example of setting up a bot which counts the number of pages in a PDF document.
+
+We will utilize a python library called pypdf2 (which you can install using pip install pypdf2) to parse the pdf and count the number of pages. We will use the requests library (which you can install using pip install requests) to download the file.
+
+Python
+
+def _fetch_pdf_and_count_num_pages(url: str) -> int:
+    response = requests.get(url)
+    if response.status_code != 200:
+        raise FileDownloadError()
+    with open("temp_pdf_file.pdf", "wb") as f:
+        f.write(response.content)
+    reader = PdfReader("temp_pdf_file.pdf")
+    return len(reader.pages)
+Now we will set up a bot class that will iterate through the user messages and identify the latest pdf file to compute the number of pages for.
+
+Python
+
+class PDFSizeBot(fp.PoeBot):
+    async def get_response(
+        self, request: fp.QueryRequest
+    ) -> AsyncIterable[fp.PartialResponse]:
+        for message in reversed(request.query):
+            for attachment in message.attachments:
+                if attachment.content_type == "application/pdf":
+                    try:
+                        num_pages = _fetch_pdf_and_count_num_pages(attachment.url)
+                        yield fp.PartialResponse(text=f"{attachment.name} has {num_pages} pages")
+                    except FileDownloadError:
+                        yield fp.PartialResponse(text="Failed to retrieve the document.")
+                    return
+The final code (including the setup code you need to host this on Modal) that goes into your main.py is as follows:
+
+Python
+
+from __future__ import annotations
+from typing import AsyncIterable
+import requests
+from PyPDF2 import PdfReader
+import fastapi_poe as fp
+
+from modal import Image, Stub, asgi_app
+
+class FileDownloadError(Exception):
+    pass
+
+
+def _fetch_pdf_and_count_num_pages(url: str) -> int:
+    response = requests.get(url)
+    if response.status_code != 200:
+        raise FileDownloadError()
+    with open("temp_pdf_file.pdf", "wb") as f:
+        f.write(response.content)
+    reader = PdfReader("temp_pdf_file.pdf")
+    return len(reader.pages)
+
+
+class PDFSizeBot(fp.PoeBot):
+    async def get_response(
+        self, request: fp.QueryRequest
+    ) -> AsyncIterable[fp.PartialResponse]:
+        for message in reversed(request.query):
+            for attachment in message.attachments:
+                if attachment.content_type == "application/pdf":
+                    try:
+                        num_pages = _fetch_pdf_and_count_num_pages(attachment.url)
+                        yield fp.PartialResponse(text=f"{attachment.name} has {num_pages} pages")
+                    except FileDownloadError:
+                        yield fp.PartialResponse(text="Failed to retrieve the document.")
+                    return
+
+    async def get_settings(self, setting: fp.SettingsRequest) -> fp.SettingsResponse:
+        return fp.SettingsResponse(allow_attachments=True)
+    
+REQUIREMENTS = ["fastapi-poe==0.0.36", "PyPDF2==3.0.1", "requests==2.31.0"]
+image = Image.debian_slim().pip_install(*REQUIREMENTS)
+stub = Stub("pdf-counter-poe")
+
+@stub.function(image=image)
+@asgi_app()
+def fastapi_app():
+    bot = PDFSizeBot()
+    app = fp.make_app(bot, allow_without_key=True)
+    return app
+Sending files with your response
+The Poe API allows you to send attachments with your bot response. When using the fastapi_poe library, send file attachments with your bot response by calling post_message_attachment within the get_response function of your bot.
+
+Example
+In this example, the bot will take the input from the user, write it into a text file, and attach that text file in the response to the user. Copy the following code into a file called main.py (you can pick any name but the deployment commands that follow assume that this is the file name). Change the access_key stub with your actual key that you can generate on the create bot page.
+
+Python
+
+from __future__ import annotations
+from typing import AsyncIterable
+import fastapi_poe as fp
+from modal import Image, Stub, asgi_app
+
+
+class AttachmentOutputDemoBot(fp.PoeBot):
+    async def get_response(
+        self, request: fp.QueryRequest
+    ) -> AsyncIterable[fp.PartialResponse]:
+        await self.post_message_attachment(
+           message_id=request.message_id, file_data=request.query[-1].content, filename="dummy.txt"
+        )
+        yield fp.PartialResponse(text=f"Attached a text file containing your last message.")
+
+
+REQUIREMENTS = ["fastapi-poe==0.0.36"]
+image = Image.debian_slim().pip_install(*REQUIREMENTS)
+stub = Stub("attachment-output-demo")
+
+
+@stub.function(image=image)
+@asgi_app()
+def fastapi_app():
+    bot = AttachmentOutputDemoBot(access_key="<put your access key here>")
+    app = fp.make_app(bot)
+    return app
+Notes
+The access_key should be the key associated with the bot sending the response. It can be found in the edit bot page.
+It does not matter where post_message_attachment is called, as long as it is within the body of get_response. It can be called multiple times to attach multiple (up to 20) files.
+A file should not be larger than 50MB.
+Setting an introduction message
+The Poe API allows you to set a friendly introduction message for your bot, providing you with a way to instruct the users on how they should use the bot. In order to do so, you have to override get_settings and set the parameter called introduction_message to whatever you want that message to be.
+
+Python
+
+async def get_settings(self, setting: fp.SettingsRequest) -> fp.SettingsResponse:
+    return fp.SettingsResponse(
+        introduction_message="Welcome to the trivia bot. Please provide me a topic that you would like me to quiz you on."
+    )
+The final code (including the setup code you need to host this on Modal) that goes into our main.py is as follows:
+
+Python
+
+from __future__ import annotations
+from typing import AsyncIterable
+from modal import Image, Stub, asgi_app
+import fastapi_poe as fp
+
+class TriviaBotSample(fp.PoeBot):
+    async def get_response(self, query: fp.QueryRequest) -> AsyncIterable[fp.PartialResponse]:
+        # implement the trivia bot.
+        yield fp.PartialResponse(text="Bot under construction. Please visit later")
+
+    async def get_settings(self, setting: fp.SettingsRequest) -> fp.SettingsResponse:
+        return fp.SettingsResponse(
+            introduction_message="Welcome to the trivia bot. Please provide me a topic that you would like me to quiz you on."
+        )
+    
+REQUIREMENTS = ["fastapi-poe==0.0.36"]
+image = Image.debian_slim().pip_install(*REQUIREMENTS)
+stub = Stub("trivia-poe")
+
+@stub.function(image=image)
+@asgi_app()
+def fastapi_app():
+    bot = TriviaBotSample()
+    app = fp.make_app(bot, allow_without_key=True)
+    return app
+Once your bot is up, update your bot's settings (one time only after you override get_settings) by following the steps listed here.
+
+
+Multi Bot Support
+The Poe client support @-mentioning other bots within the same chat. To include this support in with your bot, you need to enable enable_multi_bot_chat_prompting (Default False) in your bot settings. When this is enabled, Poe will check the previous chat history to see if there are multiple bots, and if so, it will combine the previous messages and add prompting such that your bot will have sufficient context about the conversation so far.
+
+If this setting is not enabled, you will continue to see bot/user messages as separate ProtocolMessages just like before. Currently, it is not possible to identify which bot sent a particular message in a multi-bot context, although this is something the team is working on adding in a future release.
+
+Updating bot settings
+The settings endpoint provides a way for you to opt in/out of Poe's features enabling you to customize the behavior of the bot. This article will describe how you can get Poe to fetch the latest settings from your bot.
+
+1. Set up your endpoint as described by the specs
+If you are using the fastapi_poe library, then you just need to implement the get_settings method in the PoeBot class. The following is an example:
+
+Python
+
+async def get_settings(self, setting: fp.SettingsRequest) -> fp.SettingsResponse:
+    return fp.SettingsResponse(allow_attachments=True)
+2. Get your access key
+You can find this key by going to the bot page and clicking the gear icon.
+
+
+
+3. Make a post request to Poe's refetch settings endpoint with your bot name and access key.
+On Windows, you can use the Invoke-RestMethod command. On a Macbook or Linux machine, you can use the curl command as follows:
+
+curl -X POST https://api.poe.com/bot/fetch_settings/<botname>/<access_key>/<PROTOCOL_VERSION>
+
+The PROTOCOL_VERSION is defined in fastapi_poe/client.py. If not provided, the server will use the latest version number, which might cause unexpected bot behavior if the latest version is different from the current protocol version defined in your fastapi_poe package.
+
+If you don't want to look for the PROTOCOL_VERSION, you could write a python script that calls fp.client.sync_bot_settings(for fastapi_poe version >= 0.0.47), and run the script.
+
+Python
+
+import fastapi_poe as fp
+
+# Replace the bot name and access key with information of your bot
+bot_name = "server_bot_name"
+access_key = "your_server_bot_access_key"
+
+fp.client.sync_bot_settings(bot_name, access_key)
+That's it. The response to the above request will inform you whether the updated successfully.
+
+
+Accessing HTTP request information
+Our python client (fastapi_poe) exposes the underlying Starlette Request object in the ".http_request" attribute of the request object passed to the query handler. This allows you to access the request information such as the url and query params. The following is an example (including the setup code you need to host this on Modal):
+
+Python
+
+from __future__ import annotations
+
+from typing import AsyncIterable
+
+import fastapi_poe as fp
+from modal import Image, Stub, asgi_app
+
+
+class HttpRequestBot(fp.PoeBot):
+    async def get_response_with_context(
+        self, request: fp.QueryRequest, context: fp.RequestContext
+    ) -> AsyncIterable[fp.PartialResponse]:
+        request_url = context.http_request.url
+        query_params = context.http_request.query_params
+        yield fp.PartialResponse(
+            text=f"The request url is: {request_url}, query params are: {query_params}"
+        )
+
+
+REQUIREMENTS = ["fastapi-poe==0.0.36"]
+image = Image.debian_slim().pip_install(*REQUIREMENTS)
+stub = Stub("http-request")
+
+
+@stub.function(image=image)
+@asgi_app()
+def fastapi_app():
+    bot = HttpRequestBot()
+    # Optionally, provide your Poe access key here:
+    # 1. You can go to https://poe.com/create_bot?server=1 to generate an access key.
+    # 2. We strongly recommend using a key for a production bot to prevent abuse,
+    # but the starter examples disable the key check for convenience.
+    # 3. You can also store your access key on modal.com and retrieve it in this function
+    # by following the instructions at: https://modal.com/docs/guide/secrets
+    # POE_ACCESS_KEY = ""
+    # app = make_app(bot, access_key=POE_ACCESS_KEY)
+    app = fp.make_app(bot, allow_without_key=True)
+    return app
+
+Programmatically accessing your Server bot
+We also provide a helper function for you to test the bot query API in a lower friction manner. This helper function is for testing and debugging responses only.
+
+Get your API Key
+Navigate to poe.com/api_key and copy your user API key. Note that access to an API key is currently limited to Poe subscribers to minimize abuse.
+
+
+
+Usage done with this API key will count against your user account's message limits on Poe, so be sure to only use it for testing and not for cases when other people are using your bot.
+
+Access the bot query API using "get_bot_response"
+In your python shell, run the following after replacing the placeholder with your API key.
+
+Python
+
+import asyncio
+import fastapi_poe as fp
+
+# Create an asynchronous function to encapsulate the async for loop
+async def get_responses(api_key, messages):
+    async for partial in fp.get_bot_response(messages=messages, bot_name="GPT-3.5-Turbo", api_key=api_key):
+        print(partial)
+ 
+# Replace <api_key> with your actual API key, ensuring it is a string.
+api_key = <api_key>
+message = fp.ProtocolMessage(role="user", content="Hello world")
+
+# Run the event loop
+# For Python 3.7 and newer
+asyncio.run(get_responses(api_key, [message]))
+
+# For Python 3.6 and older, you would typically do the following:
+# loop = asyncio.get_event_loop()
+# loop.run_until_complete(get_responses(api_key))
+# loop.close()
+If you are using an ipython shell, you can instead use the following simpler code.
+
+Python
+
+import fastapi_poe as fp
+
+message = fp.ProtocolMessage(role="user", content="Hello world")
+async for partial in fp.get_bot_response(messages=[message], bot_name="GPT-3.5-Turbo", api_key=<api_key>): 
+    print(partial)
+
+
+Recommended bot settings
+There are various settings that can be applied to your bot. For the best user experience we recommend turning on the following settings for your bot:
+
+enable_multi_bot_chat_prompting=True: This will automatically apply some prompting to make sure your bots respond appropriately when there are multiple bots in the chat.
+We recommend turning this on for all bots as long as they don’t rely on the conversation history having specific formatting.
+This may cause two human messages to appear consecutively though; if that’s an issue, you can turn on enforce_author_role_alternation to automatically handle this.
+allow_attachments=True: Turn on attachments for your bot
+For text attachments, this will by default parse the text attachment and include it in the prompt (since expand_text_attachments=True by default)
+Recommend turning on for all text-based bots without native vision capabilities:
+enable_image_comprehension=True: Poe converts images into text prompts using a vision model
+You should enable this for models which doesn’t support multimodality yet.
+
+fastapi_poe: Python API Reference
+The following is the API reference for the fastapi_poe client library. The reference assumes that you used import fastapi_poe as fp.
+
+fp.PoeBot
+The class that you use to define your bot behavior. Once you define your PoeBot class, you
+pass it to make_app to create a FastAPI app that serves your bot.
+
+Parameters:
+path (str = "/"): This is the path at which your bot is served. By default, it's
+set to "/" but this is something you can adjust. This is especially useful if you want to serve
+multiple bots from one server.
+access_key (Optional[str] = None): This is the access key for your bot and when
+provided is used to validate that the requests are coming from a trusted source. This access key
+should be the same one that you provide when integrating your bot with Poe at:
+https://poe.com/create_bot?server=1. You can also set this to None but certain features like
+file output that mandate an access_key will not be available for your bot.
+should_insert_attachment_messages (bool = True): A flag to decide whether to parse out
+content from attachments and insert them as messages into the conversation. This is set to
+Trueby default and we recommend leaving on since it allows your bot to comprehend attachments
+uploaded by users by default.
+concat_attachments_to_message (bool = False): Deprecated. This was used to concatenate
+attachment content to the message body. This is now handled by insert_attachment_messages.
+This will be removed in a future release.
+PoeBot.get_response
+Override this to define your bot's response given a user query.
+
+Parameters:
+request (QueryRequest): an object representing the chat response request from Poe.
+This will contain information about the chat state among other things.
+Returns:
+AsyncIterable[PartialResponse]: objects representing your
+response to the Poe servers. This is what gets displayed to the user.
+Example usage:
+
+Python
+
+async def get_response(self, request: fp.QueryRequest) -> AsyncIterable[fp.PartialResponse]:
+    last_message = request.query[-1].content
+    yield fp.PartialResponse(text=last_message)
+PoeBot.get_response_with_context
+A version of get_response that also includes the request context information. By
+default, this will call get_response.
+
+Parameters:
+request (QueryRequest): an object representing the chat response request from Poe.
+This will contain information about the chat state among other things.
+context (RequestContext): an object representing the current HTTP request.
+Returns:
+AsyncIterable[Union[PartialResponse, ErrorResponse]]: objects representing your
+response to the Poe servers. This is what gets displayed to the user.
+PoeBot.get_settings
+Override this to define your bot's settings.
+
+Parameters:
+setting (SettingsRequest): An object representing the settings request.
+Returns:
+SettingsResponse: An object representing the settings you want to use for your bot.
+PoeBot.get_settings_with_context
+A version of get_settings that also includes the request context information. By
+default, this will call get_settings.
+
+Parameters:
+setting (SettingsRequest): An object representing the settings request.
+context (RequestContext): an object representing the current HTTP request.
+Returns:
+SettingsResponse: An object representing the settings you want to use for your bot.
+PoeBot.on_feedback
+Override this to record feedback from the user.
+
+Parameters:
+feedback_request (ReportFeedbackRequest): An object representing the Feedback rqeuest
+from Poe. This is sent out when a user provides feedback on a response on your bot.
+Returns: None
+PoeBot.on_feedback_with_context
+A version of on_feedback that also includes the request context information. By
+default, this will call on_feedback.
+
+Parameters:
+feedback_request (ReportFeedbackRequest): An object representing a feedback rqeuest
+from Poe. This is sent out when a user provides feedback on a response on your bot.
+context (RequestContext): an object representing the current HTTP request.
+Returns: None
+PoeBot.on_error
+Override this to record errors from the Poe server.
+
+Parameters:
+error_request (ReportErrorRequest): An object representing an error request from Poe.
+This is sent out when the Poe server runs into an issue processing the response from your
+bot.
+Returns: None
+PoeBot.on_error_with_context
+A version of on_error that also includes the request context information. By
+default, this will call on_error.
+
+Parameters:
+error_request (ReportErrorRequest): An object representing an error request from Poe.
+This is sent out when the Poe server runs into an issue processing the response from your
+bot.
+context (RequestContext): an object representing the current HTTP request.
+Returns: None
+PoeBot.post_message_attachment
+Used to output an attachment in your bot's response.
+
+Parameters:
+message_id (Identifier): The message id associated with the current QueryRequest
+object. Important: This must be the request that is currently being handled by
+get_response. Attempting to attach files to previously handled requests will fail.
+access_key (str): The access_key corresponding to your bot. This is needed to ensure
+that file upload requests are coming from an authorized source.
+download_url (Optional[str] = None): A url to the file to be attached to the message.
+file_data (Optional[Union[bytes, BinaryIO]] = None): The contents of the file to be
+uploaded. This should be a bytes-like or file object.
+filename (Optional[str] = None): The name of the file to be attached.
+Returns:
+AttachmentUploadResponse
+Note: You need to provide either the download_url or both of file_data and
+filename.
+
+PoeBot.concat_attachment_content_to_message_body
+Concatenate received attachment file content into the message body. This will be called
+by default if concat_attachments_to_message is set to True but can also be used
+manually if needed.
+
+Parameters:
+query_request (QueryRequest): the request object from Poe.
+Returns:
+QueryRequest: the request object after the attachments are unpacked and added to the
+message body.
+PoeBot.insert_attachment_messages
+Insert messages containing the contents of each user attachment right before the last user
+message. This ensures the bot can consider all relevant information when generating a
+response. This will be called by default if should_insert_attachment_messages is set to
+True but can also be used manually if needed.
+
+Parameters:
+query_request (QueryRequest): the request object from Poe.
+Returns:
+QueryRequest: the request object after the attachments are unpacked and added to the
+message body.
+PoeBot.make_prompt_author_role_alternated
+Concatenate consecutive messages from the same author into a single message. This is useful
+for LLMs that require role alternation between user and bot messages.
+
+Parameters:
+protocol_messages (Sequence[ProtocolMessage]): the messages to make alternated.
+Returns:
+Sequence[ProtocolMessage]: the modified messages.
+fp.make_app
+Create an app object for your bot(s).
+
+Parameters:
+bot (Union[PoeBot, Sequence[PoeBot]]): A bot object or a list of bot objects if you want
+to host multiple bots on one server.
+access_key (str = ""): The access key to use. If not provided, the server tries to
+read the POE_ACCESS_KEY environment variable. If that is not set, the server will
+refuse to start, unless allow_without_key is True. If multiple bots are provided,
+the access key must be provided as part of the bot object.
+allow_without_key (bool = False): If True, the server will start even if no access
+key is provided. Requests will not be checked against any key. If an access key is provided, it
+is still checked.
+app (Optional[FastAPI] = None): A FastAPI app instance. If provided, the app will be
+configured with the provided bots, access keys, and other settings. If not provided, a new
+FastAPI application instance will be created and configured.
+Returns:
+FastAPI: A FastAPI app configured to serve your bot when run.
+fp.run
+Serve a poe bot using a FastAPI app. This function should be used when you are running the
+bot locally. The parameters are the same as they are for make_app.
+
+Returns: None
+fp.stream_request
+The Entry point for the Bot Query API. This API allows you to use other bots on Poe for
+inference in response to a user message. For more details, checkout:
+https://creator.poe.com/docs/server-bots-functional-guides#accessing-other-bots-on-poe
+
+Parameters:
+request (QueryRequest): A QueryRequest object representing a query from Poe. This object
+also includes information needed to identify the user for compute point usage.
+bot_name (str): The bot you want to invoke.
+api_key (str = ""): Your Poe API key, available at poe.com/api_key. You will need
+this in case you are trying to use this function from a script/shell. Note that if an api_key
+is provided, compute points will be charged on the account corresponding to the api_key.
+tools: (Optional[List[ToolDefinition]] = None): An list of ToolDefinition objects describing
+the functions you have. This is used for OpenAI function calling.
+tool_executables: (Optional[List[Callable]] = None): An list of functions corresponding
+to the ToolDefinitions. This is used for OpenAI function calling.
+fp.get_bot_response
+Use this function to invoke another Poe bot from your shell.
+
+Parameters:
+messages (List[ProtocolMessage]): A list of messages representing your conversation.
+bot_name (str): The bot that you want to invoke.
+api_key (str): Your Poe API key. This is available at: poe.com/api_key
+fp.get_final_response
+A helper function for the bot query API that waits for all the tokens and concatenates the full
+response before returning.
+
+Parameters:
+request (QueryRequest): A QueryRequest object representing a query from Poe. This object
+also includes information needed to identify the user for compute point usage.
+bot_name (str): The bot you want to invoke.
+api_key (str = ""): Your Poe API key, available at poe.com/api_key. You will need this in
+case you are trying to use this function from a script/shell. Note that if an api_key is
+provided, compute points will be charged on the account corresponding to the api_key.
+fp.QueryRequest
+Request parameters for a query request.
+
+Fields:
+query (List[ProtocolMessage]): list of message representing the current state of the chat.
+user_id (Identifier): an anonymized identifier representing a user. This is persistent
+for subsequent requests from that user.
+conversation_id (Identifier): an identifier representing a chat. This is
+persistent for subsequent request for that chat.
+message_id (Identifier): an identifier representing a message.
+access_key (str = "<missing>"): contains the access key defined when you created your bot
+on Poe.
+temperature (float = 0.7): Temperature input to be used for model inference.
+skip_system_prompt (bool = False): Whether to use any system prompting or not.
+logit_bias (Dict[str, float] = {})
+stop_sequences (List[str] = [])
+language_code (str = "en"`): BCP 47 language code of the user's client.
+fp.ProtocolMessage
+A message as used in the Poe protocol.
+
+Fields:
+role (Literal["system", "user", "bot"])
+sender_id (Optional[str])
+content (str)
+content_type (ContentType="text/markdown")
+timestamp (int = 0)
+message_id (str = "")
+feedback (List[MessageFeedback] = [])
+attachments (List[Attachment] = [])
+fp.PartialResponse
+Representation of a (possibly partial) response from a bot. Yield this in
+PoeBot.get_response or PoeBot.get_response_with_context to communicate your response to Poe.
+
+Fields:
+text (str): The actual text you want to display to the user. Note that this should solely
+be the text in the next token since Poe will automatically concatenate all tokens before
+displaying the response to the user.
+data (Optional[Dict[str, Any]]): Used to send arbitrary json data to Poe. This is
+currently only used for OpenAI function calling.
+is_suggested_reply (bool = False): Setting this to true will create a suggested reply with
+the provided text value.
+is_replace_response (bool = False): Setting this to true will clear out the previously
+displayed text to the user and replace it with the provided text value.
+fp.ErrorResponse
+Similar to PartialResponse. Yield this to communicate errors from your bot.
+
+Fields:
+text (str): The actual error message you want to display to the user.
+raw_response(Any): The raw exception you can pass for debugging purposes.
+allow_retry (bool = False): Whether or not to allow a user to retry on error.
+error_type (Optional[ErrorType] = None): An enum indicating what error to display.
+fp.MetaResponse
+Similar to Partial Response. Yield this to communicate meta events from server bots.
+
+Fields:
+suggested_replies (bool = False): Whether or not to enable suggested replies.
+content_type (ContentType = "text/markdown"): Used to describe the format of the response.
+The currently supported values are text/plain and text/markdown.
+refetch_settings (bool = False): Used to trigger a settings fetch request from Poe. A more
+robust way to trigger this is documented at:
+https://creator.poe.com/docs/server-bots-functional-guides#updating-bot-settings
+fp.SettingsRequest
+Request parameters for a settings request. Currently, this contains no fields but this
+might get updated in the future.
+
+fp.SettingsResponse
+An object representing your bot's response to a settings object.
+
+Fields:
+server_bot_dependencies (Dict[str, int] = {}): Information about other bots that your bot
+uses. This is used to facilitate the Bot Query API.
+allow_attachments (bool = False): Whether to allow users to upload attachments to your
+bot.
+introduction_message (str = ""): The introduction message to display to the users of your
+bot.
+expand_text_attachments (bool = True): Whether to request parsed content/descriptions from
+text attachments with the query request. This content is sent through the new parsed_content
+field in the attachment dictionary. This change makes enabling file uploads much simpler.
+enable_image_comprehension (bool = False): Similar to expand_text_attachments but for
+images.
+enforce_author_role_alternation (bool = False): If enabled, Poe will concatenate messages
+so that they follow role alternation, which is a requirement for certain LLM providers like
+Anthropic.
+enable_multi_bot_chat_prompting (bool = False): If enabled, Poe will combine previous bot
+messages if there is a multibot context.
+fp.ReportFeedbackRequest
+Request parameters for a report_feedback request.
+
+Fields:
+message_id (Identifier)
+user_id (Identifier)
+conversation_id (Identifier)
+feedback_type (FeedbackType)
+fp.ReportErrorRequest
+Request parameters for a report_error request.
+
+Fields:
+message (str)
+metadata (Dict[str, Any])
+fp.Attachment
+Attachment included in a protocol message.
+
+Fields:
+url (str)
+content_type (str)
+name (str)
+parsed_content (Optional[str] = None)
+fp.MessageFeedback
+Feedback for a message as used in the Poe protocol.
+
+Fields:
+type (FeedbackType)
+reason (Optional[str])
+fp.ToolDefinition
+An object representing a tool definition used for OpenAI function calling.
+
+Fields:
+type (str)
+function (FunctionDefinition): Look at the source code for a detailed description
+of what this means.
+fp.ToolCallDefinition
+An object representing a tool call. This is returned as a response by the model when using
+OpenAI function calling.
+
+Fields:
+id (str)
+type (str)
+function (FunctionDefinition): Look at the source code for a detailed description
+of what this means.
+fp.ToolResultDefinition
+An object representing a function result. This is passed to the model in the last step
+when using OpenAI function calling.
+
+Fields:
+role (str)
+name (str)
+tool_call_id (str)
+content (str)
+
+
+Poe Protocol Specification
+Poe is a platform for interacting with AI-based bots. Poe provides access to popular chat bots like OpenAI's GPT-3.5-Turbo and Anthropic's Claude, but also allows a creator to create their own bot by implementing the following protocol.
+
+Introduction
+This specification provides a way to run custom bots from any web-accessible service that can be used by the Poe app. Poe users will send requests to the Poe server, which will in turn send requests to the bot server using this specification. As the bot server responds, Poe will show the response to the user. See Quick start for a high-level introduction to running a server bot.
+
+Terminology
+Poe server: server run by Poe that receives client requests, turns them into requests to bot servers, and streams the response back to the Poe client.
+Bot server: server run by the creator that responds to requests from Poe servers. The responses are ultimately shown to users in their Poe client.
+Concepts
+Identifiers
+The protocol uses identifiers for certain request fields. These are labeled as “identifier” in the specification. Identifiers are globally unique. They consist of a sequence of 1 to 3 lowercase ASCII characters, followed by a hyphen, followed by 32 lowercase alphanumeric ASCII characters or = characters (i.e., they fulfill the regex ^[a-z]{1,3}-[a-z0-9=]{32}$).
+
+The characters before the hyphen are a tag that represents the type of the object. The following types are currently in use:
+
+m: represents a message
+u: represents a user
+c: represents a conversation (thread)
+d: represents metadata sent with a message
+Authentication
+While creating a bot, a creator can provide an access key consisting of 32 ASCII characters. To allow bot servers to confirm that the requests come from Poe, all requests will have an Authorization HTTP header Bearer <access_key>.
+
+Content types
+Messages may use the following content types:
+
+text/plain: Plain text, rendered without further processing
+text/markdown: Markdown text. Specifically, this supports all features of GitHub-Flavored Markdown (GFM, specified at https://github.github.com/gfm/). Poe may however modify the rendered Markdown for security or usability reasons.
+Versioning
+It is expected that the API will be extended in the future to support additional features. The protocol version string consists of two numbers (e.g., 1.0).
+
+The first number is the request version. It will be incremented if the form the request takes changes in an incompatible fashion. For example, the current protocol only contains a single API call from Poe servers to bot servers. If we were to add another API call that bot servers are expected to support, we would increment the request version (e.g., from 1.0 to 2.0). This is expected to be very rare, and it will be communicated to bot servers well in advance.
+
+The second number is the response version. It will be incremented whenever the Poe server adds support for a new feature that bot servers can use. For example, as of this version we support two content types in LLM responses. If we were to add a third, we would increment the response version (e.g., from 1.0 to 1.1). Bot servers written for an earlier response version will continue to work; they simply will not use the new feature.
+
+The response version is also incremented for backward-compatible changes to the request. For example, if we add a new field to the request body, we would increment the response version. This is safe for old bot servers as they will simply ignore the added field.
+
+Throughout the protocol, bot servers should ignore any dictionary keys without a specified meaning. They may be used in a future version of the protocol.
+
+Limits
+Poe may implement limits on bot servers to ensure the reliability and scalability of the product. In particular:
+
+The initial response to any request must be returned within 5 seconds.
+The response to any request (including query requests) must be completed within 600 seconds.
+The total length of a bot response (the sum of the length of all text events sent in response to a query request) may not exceed 100,000 characters.
+The total number of events sent in response to a query event may not exceed 10,000.
+If the number of messages in a user's previous conversation with the bot exceeds 1000, Poe may truncate the conversation.
+We may raise these limits in the future if good use cases come up.
+
+Requests
+The Poe server will send an HTTP POST request to the bot servers URL with content type application/json. The body will be a JSON dictionary with the following keys:
+
+version (string): The API version that the server is using.
+type (string): This is one of the following strings:
+query: Called when the user makes a query to the bot (i.e., they send a message).
+settings: Query the bot for its desired settings.
+report_feedback: Report to the bot server when certain events happen (e.g., the user likes a message).
+report_error: Report to the bot server when an error happens that is attributable to the bot (e.g., it uses the protocol incorrectly).
+Additional request types may be added in the future. Bot servers should ignore any request types they do not understand, ideally by sending a 501 Not Implemented HTTP response.
+Each of the request types is discussed in detail below:
+
+query
+The query request type
+In addition to the request fields that are valid for all queries, query requests take the following parameters in the request:
+
+query: An array containing one or more dictionaries that represent a previous message in the conversation with the bot. These are in chronological order, the most recent message last. It includes all messages in the current context window (see above). These dictionaries contain the following keys:
+role (string): one of the following strings:
+system: A message that tells the bot how it should work. Example: “You are an AI assistant that gives useful information to Poe users.”
+user: A message from the user. Example: “What is the capital of Nepal?"
+bot: A response from the bot. Example: “The capital of Nepal is Kathmandu.”
+More roles may be added in the future. Bot servers should ignore messages with roles they do not recognize.
+content (string): The text of the message.
+content_type (string): The content type of the message (see under “Content type” above). Bots should ignore messages with content types they do not understand.
+timestamp (int): The time the message was sent, as the number of microseconds since the Unix epoch.
+message_id (identifier with type m): Identifier for this message.
+feedback (array): A list of dictionaries representing feedback that the user gave to the message. Each dictionary has the following keys:
+type (string): Either like or dislike. More types may be added in the future and bot servers should ignore types they do not recognize.
+reason (string): A string representing the reason for the action. This key may be omitted.
+attachments (array): A list of dictionaries representing attachments that the user has sent with message. Each dictionary has the following keys:
+url (string): A URL pointing to the raw file. This URL is only guaranteed to remain valid for 10 minutes from when the request is sent.
+content_type (string): The MIME type for the file (e.g., image/png or application/pdf).
+name (string): The file name for the file (e.g., paper.pdf).
+parsed_content (Optional string): If expand_text_attachments or enable_image_comprehension are enabled, parsed content will be passed in through this field.
+message_id (identifier with type m): identifier for the message that the bot will create; also used for the report_feedback endpoint
+user_id (identifier with type u): the user making the request
+conversation_id (identifier with type c): identifier for the conversation (thread) the user is currently in. Resets when context is cleared.
+metadata (identifier with type d): internal metadata used by Poe when accessing other bots. This data must be sent when using the API to access other Poe bots.
+The Poe server may also send the following parameters influencing how the underlying LLM, if any, is invoked. Bot servers may ignore these parameters or treat them as hints as they wish:
+
+temperature (float in range 0 <= temperature <= infinity): indicates what temperature the bot should use while making requests. Bots for which this setting does not make sense may ignore this parameter.
+skip_system_prompt (boolean): if set to true, bots should minimize any adjustments they make to the prompt before sending data to the underlying LLM. Exactly what this means is up to individual bots.
+stop_sequences (array of string): if the LLM encounters one of these strings, it should stop its response.
+logit_bias (object with float values): an object where the keys are tokens and the values are floats in the range -100 <= value <= 100, where a negative value makes the token less likely to be emitted and a positive value makes the token more likely to be emitted.
+Response
+The bot server should respond with an HTTP response code of 200. If any other response code is returned, the Poe server will show an error message to the user. The server must respond with a stream of server-sent events, as specified by the WhatWG (https://html.spec.whatwg.org/multipage/server-sent-events.html).
+
+Server-sent events contain a type and data. The Poe API supports several event types with different meanings. For each type, the data is a JSON string as specified below. The following event types are supported:
+
+meta: represents metadata about how the Poe server should treat the bot server response. This event should be the first event sent back by the bot server. If no meta event is given, the default values are used. If a meta event is not the first event, the behavior is unspecified; currently it is ignored but future extensions to the protocol may allow multiple meta events in one response. The data dictionary supports the following keys (any additional keys passed are currently ignored, but may gain a meaning in a future version of the protocol):
+content_type (string, defaults to text/markdown): If this is text/markdown, the response is rendered as Markdown by the Poe client. If it is text/plain, the response is rendered as plain text. Other values are unsupported and are treated like text/plain.
+suggested_replies (boolean, defaults to false): If this is true, Poe will suggest followup messages to the user that they might want to send to the bot. If this is false, no suggested replies will be shown to the user. Note that the protocol also supports bots sending their own suggested replies (see below). If the bot server sends any suggested_reply event, Poe will not show any of its own suggested replies, only those suggested by the bot, regardless of the value of the suggested_replies setting.
+text: represents a piece of text to send to the user. This is a partial response; the text shown to the user when the request is complete will be a concatenation of the texts from all text events. The data dictionary may have the following keys:
+text (string): A partial response to the user’s query
+json: represents a piece of data send as part of the response. This is usually used to any other information that does not necessarily need to be shown to the user (for example, information about what functions to call when using OpenAI function calling).
+replace_response: like text, but discards all previous text events. The user will no longer see the previous responses, and instead see only the text provided by this event. The data dictionary must have the following keys:
+text (string): A partial response to the user's query
+suggested_reply: represents a suggested followup query that the user can send to reply to the bot’s query. The Poe UI may show these followups as buttons the user can press to immediately send a new query. The data dictionary has the following keys:
+text (string): Text of the suggested reply.
+error: indicates that an error occurred in the bot server. If this event type is received, the server will close the connection and indicate to the user that there was an error communicating with the bot server. The server may retry the request. The data dictionary may contain the following keys:
+allow_retry (boolean): If this is False, the server will not retry the request. If this is True or omitted, the server may retry the request.
+text (string): The message the user will see regarding the error. Consider translating the message using the QueryRequest's language_code for better readability.
+raw_response (Exception): Optionally, pass in the raw exception into this field for easier debugging. The user will not see this field.
+error_type (string): May contain an error_type. Specifying an error_type allows Poe to handle protocol bot errors similarly to Poe-internal errors. See #supported-error_types for more information.
+done: must be the last event in the stream, indicating that the bot response is finished. The server will close the connection after this event is received. The data for this event is currently ignored, but it must be valid JSON.
+The bot response must include at least one text or error event; it is an error to send no response.
+
+If the Poe server receives an event type it does not recognize, it ignores the event.
+
+Supported error_types
+user_message_too_long
+Raise this if the latest user message is too long for the API bot to handle. This will raise an error to the user.
+settings
+This request takes no additional request parameters other than the standard ones.
+
+The server should respond with a response code of 200 and content type of application/json. The JSON response should be a dictionary containing the keys listed below. All keys are optional; if they are not specified the default values are used. Poe reserves the right to change the defaults at any time, so if bots rely on a particular setting, they should set it explicitly.
+
+If a settings request fails (it does not return a 200 response code with a valid JSON body), the previous settings are used for the bot. If this is the first request, that means the default values are used for all settings; if it is a refetch request, the settings previously used for the bot remain in use. If the request does not return a 2xx or 501 response code, the Poe server may retry the settings request after some time.
+
+Response
+The response may contain the following keys:
+
+server_bot_dependencies (mapping of strings to integers): Declare what bots your server bot will access through the bot query API. The keys in the mapping are handles of Poe bots and the values are the number of calls to each bot that the server bot is expected to make. For example, setting this field to {"GPT-3.5-Turbo": 1} declares that the bot will use a single call to GPT-3.5-Turbo. Poe may show this value to users, and will enforce that bots do not access other bots that they did not declare beforehand. In addition, you may not currently use more than 10 calls to other bots for a single message.
+allow_attachments (boolean): If true, allow users to send attachments with messages sent to the bot. The default is false.
+expand_text_attachments (boolean): If allow_attachments=True, Poe will parse text files and send their content in the parsed_content field of the attachment object. Defaults to True.
+enable_image_comprehension (boolean): If allow_attachments=True, Poe will use image vision to generate a description of image attachments and send their content in the parsed_content field of the attachment object. If this is enabled, the Poe user will only be able to send at most one image per message due to image vision limitations. Defaults to False.
+introduction_message (string): Set a message that the bot will use to introduce itself to users at the start of a chat. This message is always treated as Markdown. By default, bots will have no introduction.
+enforce_author_role_alternation (boolean): whether Poe should concatenate messages to follow strict user/bot alternation before sending to the bot. Defaults to False.
+enable_multi_bot_chat_prompting (boolean): whether Poe should combine previous chat history into a single message with special prompting so that the current bot will have sufficient context about a multi bot chat. Defaults to False.
+report_feedback
+This request takes the following additional parameters:
+
+message_id (identifier with type m): The message for which feedback is provided.
+user_id (identifier with type u): The user providing the feedback
+conversation_id (identifier with type c): The conversation giving rise to the feedback
+feedback_type (string): May be like or dislike. Additional types may be added in the future; bot servers should ignore feedback with types they do not recognize.
+Response
+The server’s response is ignored.
+
+report_error
+When the bot server fails to use the protocol correctly (e.g., when it uses the wrong types in response to a settings request, the Poe server may make a report_error request to the server that reports what went wrong. The protocol does not guarantee that the endpoint will be called for every error; it is merely intended as a convenience to help bot server creators debug their bot.
+
+This request takes the following additional parameters:
+
+message (string): A string describing the error.
+metadata (dictionary): May contain metadata that may be helpful in diagnosing the error, such as the conversation_id for the conversation. The exact contents of the dictionary are not specified and may change at any time.
+Response
+The server’s response is ignored.
+
+Samples
+
+
+Suppose we’re having the above conversation over Poe with a bot server running at https://ai.example.com/llm.
+
+For the Poe conversation above, the Poe server sends a POST request to https://ai.example.com/llm with the following JSON in the body:
+
+JSON
+
+{
+    "version": "1.0",
+    "type": "query",
+    "query": [
+        {
+            "role": "user",
+            "content": "What is the capital of Nepal?",
+            "content_type": "text/markdown",
+            "timestamp": 1678299819427621,
+        }
+    ],
+    "user": "u-1234abcd5678efgh",
+    "conversation": "c-jklm9012nopq3456",
+}
+The bot server responds with an HTTP 200 response code, then sends the following server-sent events:
+
+JSON
+
+event: meta
+data: {"content_type": "text/markdown", "linkify": true}
+
+event: text
+data: {"text": "The"}
+
+event: text
+data: {"text": " capital of Nepal is"}
+
+event: text
+data: {"text": " Kathmandu."}
+
+event: done
+data: {}
+The text may also be split into more or fewer individual events as desired. Sending more events means that users will see partial responses from the bot server faster.
+
+Next steps
+Check out our quick start to promptly get a bot running.
+fastapi-poe, a library for building Poe bots using the FastAPI framework. We recommend using this library if you are building your own bot.
+Example Bots
+Example bots
+These bots are all server bots built on the API. You can try each of them live in Poe by clicking the link.
+
+Web search
+This bot conducts web searches and then uses GPT-3.5 via the bot query API to write an answer informed by the searches. This bot is an official bot operated by Poe, built entirely on the same API we make available to creators.
+Mixtral-8x7B-Chat
+Created by Fireworks, this bot provides access to Mixtral 8x7B Mixture-of-Experts.
+YouTube Summarizer
+This bot will generate a quick text summary of any YouTube video, and answer your questions about it using GPT-3.5 via the bot query API.
+Source code: https://github.com/anmolsingh95/yt-summarizer-poe
+StableDiffusionXL
+This bot uses SDXL to generate an image for the user based on their prompt.
+PythonAgent
+Code interpreter with ChatGPT. Supports files upload, file persistence, automatic code re-execution and matplotlib image output.
+Source code: https://github.com/tonghuikang/server-bot-quick-start/blob/main/bot_PythonAgent.py

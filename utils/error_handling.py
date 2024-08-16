@@ -1,9 +1,8 @@
 import logging
 from typing import Union
-
 import fastapi_poe as fp
 
-# Configure logging
+# Configure logging for error handling
 logging.basicConfig(
     level=logging.ERROR, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
@@ -11,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class BotError(Exception):
-    """Custom exception for bot-specific errors."""
+    """Custom exception class for handling bot-specific errors."""
 
     pass
 
@@ -19,7 +18,15 @@ class BotError(Exception):
 async def handle_error(
     e: Exception,
 ) -> Union[fp.ErrorResponse, fp.PartialResponse]:
-    """Handles errors, providing appropriate user feedback and logging."""
+    """
+    Handles errors, providing appropriate user feedback and logging.
+
+    Parameters:
+        e (Exception): The exception that occurred.
+
+    Returns:
+        Union[fp.ErrorResponse, fp.PartialResponse]: An error response for the user.
+    """
     if isinstance(e, BotError):
         logger.warning(f"BotError: {str(e)}")
         return fp.PartialResponse(
@@ -42,7 +49,19 @@ async def handle_error(
 
 
 def validate_input(input_string: str, max_length: int = 1000) -> str:
-    """Validates user input, ensuring it's not empty and within length limits."""
+    """
+    Validates user input, ensuring it's not empty and within length limits.
+
+    Parameters:
+        input_string (str): The input string to validate.
+        max_length (int): The maximum allowed length of the input.
+
+    Returns:
+        str: The validated and sanitized input string.
+
+    Raises:
+        BotError: If the input is invalid or too long.
+    """
     input_string = input_string.strip()
     if not input_string:
         raise BotError("Input cannot be empty.")

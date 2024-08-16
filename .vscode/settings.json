@@ -28,5 +28,8 @@
         "editor.defaultFormatter": "ms-python.python"
     },
     "autoDocstring.docstringFormat": "google",
-    "python.analysis.typeCheckingMode": "basic"
+    "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.extraPaths": [
+        "./utils"
+    ]
 }

@@ -7,25 +7,45 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
 async def analyze_sentiment(text: str) -> str:
-    """Analyzes the sentiment of the given text using OpenAI."""
+    """
+    Analyzes the sentiment of the given text using OpenAI's language model.
+
+    Parameters:
+        text (str): The text to analyze.
+
+    Returns:
+        str: The sentiment analysis result, typically "positive", "negative", or "neutral".
+    """
     try:
         response = openai.Completion.create(
-            engine="text-davinci-003", 
+            engine="text-davinci-003",
             prompt=f"Analyze the sentiment of the following text:\n\n{text}\n\nSentiment:",
             max_tokens=10,
-            temperature=0.0, 
+            temperature=0.0,
         )
         sentiment = response.choices[0].text.strip().lower()
         return sentiment
     except Exception as e:
         logger.error(f"Error analyzing sentiment: {e}")
-        return "neutral"  
+        return "neutral"
+
 
 async def generate_dynamic_follow_up_questions(
     functionality: str, user_input: str, interaction_history: str
 ) -> list[str]:
-    """Generates context-aware follow-up questions using OpenAI."""
+    """
+    Generates context-aware follow-up questions based on user interaction.
+
+    Parameters:
+        functionality (str): The current functionality being used by the bot.
+        user_input (str): The user's latest input.
+        interaction_history (str): The history of the user's interactions.
+
+    Returns:
+        list[str]: A list of relevant follow-up questions.
+    """
     try:
         context_prompt = f"""
         The user is interacting with a bot specializing in argument and negotiation.
@@ -41,7 +61,7 @@ async def generate_dynamic_follow_up_questions(
             engine="text-davinci-003",
             prompt=context_prompt,
             max_tokens=100,
-            temperature=0.7,  
+            temperature=0.7,
             n=1,
             stop=None,
         )
