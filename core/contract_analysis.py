@@ -1,6 +1,8 @@
 from typing import AsyncIterable, Dict
 import fastapi_poe as fp
 from utils.prompt_engineering import create_prompt
+from utils.error_handling import BotError
+
 import logging
 import json
 
@@ -24,21 +26,24 @@ async def handle_contract_analysis(
         AsyncIterable[fp.PartialResponse]: Responses to the user regarding contract analysis.
     """
     clause = user_input.replace("contract", "").strip()
-    prompt = create_prompt("contract_analysis", topic=clause)
+    if not clause:
+        raise BotError("Please provide a contract clause to analyze.")
 
     yield fp.PartialResponse(text="Analyzing the contract clause...\n\n")
     logger.info("Starting contract clause analysis")
 
     try:
         # Perform initial analysis of the contract clause
-        async for msg in fp.stream_request(request, "GPT-4"):
+        async for msg in fp.stream_request(
+            request, "GPT-4", create_prompt("contract_analysis", topic=clause)
+        ):
             yield fp.PartialResponse(text=msg.text)  # Accessing the 'text' attribute
 
         # Provide a detailed breakdown of the clause
         yield fp.PartialResponse(text="\n\nProviding a detailed breakdown:\n\n")
         breakdown = await get_detailed_breakdown(request, clause)
         for section, analysis in breakdown.items():
-            yield fp.PartialResponse(text=f"{section}:\n{analysis}\n\n")
+            yield fp.PartialResponse(text=f"{section}: \n{analysis}\n\n")
 
         # Analyze potential legal implications of the clause
         yield fp.PartialResponse(text="Potential legal implications:\n\n")
@@ -88,10 +93,11 @@ async def get_detailed_breakdown(
     Returns:
         Dict[str, str]: A dictionary containing section titles and their corresponding analyses.
     """
-    breakdown_prompt = f"Provide a detailed breakdown of the following contract clause, including key terms, obligations, and potential risks:\n\n{contract_clause}"
     breakdown = {}
     try:
-        async for msg in fp.stream_request(request, "GPT-4"):
+        async for msg in fp.stream_request(
+            request, "GPT-4", create_prompt("contract_analysis", topic=contract_clause)
+        ):
             sections = msg.text.split('\n\n')  # Accessing the 'text' attribute
             for section in sections:
                 if ':' in section:
@@ -113,10 +119,13 @@ async def get_legal_implications(request: fp.QueryRequest, contract_clause: str)
     Returns:
         str: A summary of potential legal risks and implications.
     """
-    legal_prompt = f"Analyze the potential legal implications and risks of the following contract clause:\n\n{contract_clause}"
     legal_analysis = ""
     try:
-        async for msg in fp.stream_request(request, "Claude-instant"):
+        async for msg in fp.stream_request(
+            request,
+            "Claude-instant",
+            create_prompt("contract_analysis", topic=contract_clause),
+        ):
             legal_analysis += msg.text  # Accessing the 'text' attribute
     except Exception as e:
         logger.error(f"Error during legal implications analysis: {e}")
@@ -136,9 +145,11 @@ async def suggest_improvements(
     Yields:
         AsyncIterable[fp.PartialResponse]: Suggested improvements for the clause.
     """
-    improvement_prompt = f"Suggest improvements or alternative phrasings for the following contract clause to make it more favorable or clearer:\n\n{contract_clause}"
+
     try:
-        async for msg in fp.stream_request(request, "GPT-4"):
+        async for msg in fp.stream_request(
+            request, "GPT-4", create_prompt("contract_analysis", topic=contract_clause)
+        ):
             yield fp.PartialResponse(text=msg.text)  # Accessing the 'text' attribute
     except Exception as e:
         logger.error(f"Error during suggestions for improvements: {e}")
@@ -155,10 +166,11 @@ async def get_sentiment_analysis(request: fp.QueryRequest, contract_clause: str)
     Returns:
         str: A sentiment analysis of the contract clause.
     """
-    sentiment_prompt = f"Provide a sentiment analysis of the following contract clause:\n\n{contract_clause}"
     sentiment_analysis = ""
     try:
-        async for msg in fp.stream_request(request, "GPT-4"):
+        async for msg in fp.stream_request(
+            request, "GPT-4", create_prompt("contract_analysis", topic=contract_clause)
+        ):
             sentiment_analysis += msg.text  # Accessing the 'text' attribute
     except Exception as e:
         logger.error(f"Error during sentiment analysis: {e}")

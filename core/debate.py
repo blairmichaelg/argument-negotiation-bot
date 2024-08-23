@@ -1,6 +1,12 @@
 from typing import AsyncIterable
 import fastapi_poe as fp
 from utils.prompt_engineering import create_prompt
+from fastapi_poe.client import BotError
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 async def handle_debate(
@@ -18,20 +24,34 @@ async def handle_debate(
         AsyncIterable[fp.PartialResponse]: Responses to the user regarding the debate.
     """
     topic = user_input.replace("debate", "").strip()  # Extract the topic
-    prompt = create_prompt("debate", topic=topic)
+    if not topic:
+        raise BotError("Please provide a debate topic.")
 
-    async for msg in fp.stream_request(request, "GPT-3.5-Turbo", prompt=prompt):
-        yield fp.PartialResponse(text=msg.text)
+    create_prompt("debate", topic=topic)
 
-    yield fp.PartialResponse(text="\n\nWhich side would you like to argue for?")
+    async for msg in fp.stream_request(request, bot_name="GPT-4"):
+        yield msg  # Send the generated response to the user for the debate topic prompt
 
-    # Handle user's side choice
-    user_choice = await request.get_next_message()
-    chosen_side = user_choice.content.lower()
+    yield fp.PartialResponse(
+        text="\n\nWhich side would you like to argue for?\n" "1. For\n" "2. Against"
+    )  # Ask the user to choose a side for the debate topic
 
-    # Generate arguments for the chosen side
-    argument_prompt = f"Generate strong arguments for the {chosen_side} side of the debate on: {topic}"
-    async for msg in fp.stream_request(request, "GPT-4", prompt=argument_prompt):
+    user_choice = request.query[-1].content.lower()
+    chosen_side = user_choice
+    if "1" in user_choice or "for" in user_choice:
+        chosen_side = "for"
+    elif "2" in user_choice or "against" in user_choice:
+        chosen_side = "against"
+    else:
+        yield fp.PartialResponse(
+            text="I'm sorry, I didn't understand your choice. Please try again."
+        )
+        return
+
+    create_prompt(
+        "debate", topic=f"Generate an argument {chosen_side} the topic: {topic}"
+    )
+    async for msg in fp.stream_request(request, bot_name="GPT-4"):
         yield fp.PartialResponse(text=msg.text)
 
     yield fp.PartialResponse(
@@ -41,15 +61,15 @@ async def handle_debate(
         "3. Do something else?"
     )
 
-    # Handle further debate actions
-    next_action = await request.get_next_message()
-    if "1" in next_action.content or "continue" in next_action.content.lower():
+    next_action = request.query[-1].content.lower()
+    if "1" in next_action or "continue" in next_action:
         yield fp.PartialResponse(text="Okay, let's continue. What's your next point?")
-    elif "2" in next_action.content or "counter" in next_action.content.lower():
-        async for msg in await generate_counterarguments(request, topic, chosen_side):
+    elif "2" in next_action or "counter" in next_action:
+        async for msg in generate_counterarguments(request, topic, chosen_side):
             yield msg
     else:
         yield fp.PartialResponse(text="Alright, what else would you like to do?")
+        return
 
 
 async def generate_counterarguments(
@@ -66,6 +86,6 @@ async def generate_counterarguments(
     Yields:
         AsyncIterable[fp.PartialResponse]: Counterarguments against the specified side.
     """
-    prompt = f"Generate strong counterarguments against the {side} side of the debate on: {topic}"
-    async for msg in fp.stream_request(request, "GPT-4", prompt=prompt):
+    f"Generate strong counterarguments against the following argument: {side} the topic: {topic}"
+    async for msg in fp.stream_request(request, bot_name="GPT-4"):
         yield fp.PartialResponse(text=msg.text)

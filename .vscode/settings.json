@@ -31,5 +31,6 @@
     "python.analysis.typeCheckingMode": "basic",
     "python.analysis.extraPaths": [
         "./utils"
-    ]
+    ],
+    "python.testing.unittestEnabled": false
 }

@@ -1,6 +1,8 @@
 import logging
 from typing import Union
-import fastapi_poe as fp
+
+from fastapi_poe import ErrorResponse, PartialResponse
+from fastapi_poe.client import BotError
 
 # Configure logging for error handling
 logging.basicConfig(
@@ -9,15 +11,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-class BotError(Exception):
-    """Custom exception class for handling bot-specific errors."""
-
-    pass
-
-
-async def handle_error(
-    e: Exception,
-) -> Union[fp.ErrorResponse, fp.PartialResponse]:
+async def handle_error(e: Exception) -> Union[ErrorResponse, PartialResponse]:
     """
     Handles errors, providing appropriate user feedback and logging.
 
@@ -25,23 +19,28 @@ async def handle_error(
         e (Exception): The exception that occurred.
 
     Returns:
-        Union[fp.ErrorResponse, fp.PartialResponse]: An error response for the user.
+        Union[ErrorResponse, PartialResponse]: An error response for the user.
     """
     if isinstance(e, BotError):
         logger.warning(f"BotError: {str(e)}")
-        return fp.PartialResponse(
+        return PartialResponse(
             text=f"I encountered an issue: {str(e)}. Please try rephrasing."
         )
-    elif isinstance(e, fp.PoeException):
-        logger.error(f"Poe API Error: {str(e)}")
-        return fp.ErrorResponse(
-            text="There's an issue connecting to the Poe API. Please retry later.",
+    elif isinstance(e, ValueError):
+        logger.warning(f"ValueError: {str(e)}")
+        return PartialResponse(
+            text="I'm having trouble with that request. Please try again later."
+        )
+    elif isinstance(e, RuntimeError):
+        logger.error(f"RuntimeError: {str(e)}")
+        return ErrorResponse(
+            text="An unexpected error occurred. Please try again later.",
             raw_response=str(e),
-            allow_retry=True,
+            allow_retry=False,
         )
     else:
         logger.exception("Unexpected Error:")
-        return fp.ErrorResponse(
+        return ErrorResponse(
             text="An unexpected error occurred. We've been notified. Please try again later.",
             raw_response=str(e),
             allow_retry=False,

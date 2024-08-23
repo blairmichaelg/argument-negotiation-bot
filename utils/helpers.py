@@ -1,75 +1,108 @@
-import openai
-import logging
+import re
+from typing import List
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger(__name__)
+import nltk
+from nltk.sentiment import SentimentIntensityAnalyzer
+
+nltk.download("vader_lexicon")
+
+sia = SentimentIntensityAnalyzer()
 
 
-async def analyze_sentiment(text: str) -> str:
+def analyze_sentiment(text: str) -> str:
     """
-    Analyzes the sentiment of the given text using OpenAI's language model.
+    Analyzes the sentiment of a given text using NLTK's VADER sentiment analyzer.
 
     Parameters:
         text (str): The text to analyze.
 
     Returns:
-        str: The sentiment analysis result, typically "positive", "negative", or "neutral".
+        str: A string describing the sentiment (positive, negative, neutral, or mixed).
     """
-    try:
-        response = openai.Completion.create(
-            engine="text-davinci-003",
-            prompt=f"Analyze the sentiment of the following text:\n\n{text}\n\nSentiment:",
-            max_tokens=10,
-            temperature=0.0,
-        )
-        sentiment = response.choices[0].text.strip().lower()
-        return sentiment
-    except Exception as e:
-        logger.error(f"Error analyzing sentiment: {e}")
+    sentiment = sia.polarity_scores(text)
+    if sentiment["compound"] >= 0.05:
+        return "positive"
+    elif sentiment["compound"] <= -0.05:
+        return "negative"
+    elif sentiment["compound"] == 0:
         return "neutral"
+    else:
+        return "mixed"
 
 
-async def generate_dynamic_follow_up_questions(
-    functionality: str, user_input: str, interaction_history: str
-) -> list[str]:
+def generate_dynamic_follow_up_questions(text: str) -> List[str]:
     """
-    Generates context-aware follow-up questions based on user interaction.
+    Generates dynamic follow-up questions based on the provided text.
 
     Parameters:
-        functionality (str): The current functionality being used by the bot.
-        user_input (str): The user's latest input.
-        interaction_history (str): The history of the user's interactions.
+        text (str): The text to analyze.
 
     Returns:
-        list[str]: A list of relevant follow-up questions.
+        List[str]: A list of follow-up questions.
     """
-    try:
-        context_prompt = f"""
-        The user is interacting with a bot specializing in argument and negotiation.
-        The user's current input is: {user_input}
-        The previous conversation history is: {interaction_history}
-        The bot's functionality being used is: {functionality}
+    questions = []
+    # Extract key nouns and verbs from the text
+    tokens = nltk.word_tokenize(text)
+    nouns = [word for word, pos in nltk.pos_tag(tokens) if pos.startswith("NN")]
+    verbs = [word for word, pos in nltk.pos_tag(tokens) if pos.startswith("VB")]
 
-        Generate 3 relevant and engaging follow-up questions based on this context.
-        Provide the questions as a numbered list.
-        """
+    # Generate questions based on nouns and verbs
+    for noun in nouns:
+        questions.append(f"Tell me more about {noun}.")
+        questions.append(f"What is the significance of {noun} in this context?")
+    for verb in verbs:
+        questions.append(f"Why did {verb} happen?")
+        questions.append(f"What were the consequences of {verb}?")
 
-        response = openai.Completion.create(
-            engine="text-davinci-003",
-            prompt=context_prompt,
-            max_tokens=100,
-            temperature=0.7,
-            n=1,
-            stop=None,
-        )
+    # Remove duplicate questions
+    questions = list(set(questions))
+    return questions
 
-        questions_text = response.choices[0].text.strip()
-        questions_list = questions_text.split("\n")
-        return [question.strip() for question in questions_list if question.strip()]
 
-    except Exception as e:
-        logger.error(f"Error generating follow-up questions: {e}")
-        return []
+def extract_job_details(text: str) -> dict:
+    """
+    Extracts job title and location from user input.
+
+    Parameters:
+        text (str): The user's input text.
+
+    Returns:
+        dict: A dictionary containing the extracted job title and location.
+    """
+    job_title = None
+    location = None
+
+    # Use regular expressions to extract job title and location
+    job_title_match = re.search(r"I'm looking for a (.*) job", text, re.IGNORECASE)
+    if job_title_match:
+        job_title = job_title_match.group(1).strip()
+    else:
+        job_title_match = re.search(r"I'm a (.*)", text, re.IGNORECASE)
+        if job_title_match:
+            job_title = job_title_match.group(1).strip()
+
+    location_match = re.search(r"in (.*)", text, re.IGNORECASE)
+    if location_match:
+        location = location_match.group(1).strip()
+    else:
+        location_match = re.search(r"in the (.*)", text, re.IGNORECASE)
+        if location_match:
+            location = location_match.group(1).strip()
+
+    return {"job_title": job_title, "location": location}
+
+
+def format_salary_data(salary_data: dict) -> str:
+    """
+    Formats salary data for display to the user.
+
+    Parameters:
+        salary_data (dict): A dictionary containing salary data.
+
+    Returns:
+        str: A formatted string representing the salary data.
+    """
+    if "error" in salary_data:
+        return salary_data["error"]
+    else:
+        return f"The average salary for this job is {salary_data['average_salary']} {salary_data['currency']}."

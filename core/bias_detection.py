@@ -2,6 +2,7 @@ from typing import AsyncIterable, List, Dict
 import fastapi_poe as fp
 from utils.prompt_engineering import create_prompt
 import logging
+from fastapi_poe.client import BotError
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
@@ -39,16 +40,17 @@ async def handle_bias_detection(
     """
     try:
         argument = user_input.replace("cognitive bias", "").strip()
-        if argument:
-            prompt = create_prompt("bias_detection", topic=argument)
-        else:
-            prompt = create_prompt("bias_detection")
+        if not argument:
+            raise BotError("Please provide an argument to analyze.")
+
         yield fp.PartialResponse(
             text="Analyzing the argument for cognitive biases...\n\n"
         )
 
         # Initial bias detection
-        async for msg in fp.stream_request(request, "GPT-4"):
+        async for msg in fp.stream_request(
+            request, "GPT-4", create_prompt("bias_detection", topic=argument)
+        ):
             yield fp.PartialResponse(text=msg.text)
 
         # Check cache first
@@ -61,7 +63,7 @@ async def handle_bias_detection(
         yield fp.PartialResponse(text="\n\nDetailed bias analysis:\n\n")
         for bias in detected_biases:
             explanation = await explain_bias(request, bias, argument)
-            yield fp.PartialResponse(text=f"{bias}:\n{explanation}\n\n")
+            yield fp.PartialResponse(text=f"{bias}: \n{explanation}\n\n")
 
         yield fp.PartialResponse(
             text="\n\nWould you like to: \n"
@@ -70,8 +72,10 @@ async def handle_bias_detection(
             "3. Do something else?"
         )
 
-        # Handle user choice
-        user_choice = request.query[-1].content
+        # Handle user choice through WebSocket or another method
+        user_choice = await get_user_choice(
+            request
+        )  # Implement this function based on your framework
         if "1" in user_choice or "mitigate" in user_choice.lower():
             async for msg in suggest_debiasing_strategies(request, detected_biases):
                 yield msg
@@ -98,9 +102,10 @@ async def detect_specific_biases(request: fp.QueryRequest, argument: str) -> Lis
         List[str]: A list of detected cognitive biases.
     """
     try:
-        bias_prompt = f"Identify which of the following cognitive biases are present in this argument: {', '.join(COMMON_BIASES)}\n\nArgument: {argument}"
         detected_biases = []
-        async for msg in fp.stream_request(request, "GPT-3.5-Turbo"):
+        async for msg in fp.stream_request(
+            request, "GPT-3.5-Turbo", create_prompt("bias_detection", topic=argument)
+        ):
             for bias in COMMON_BIASES:
                 if bias.lower() in msg.text.lower():
                     detected_biases.append(bias)
@@ -123,7 +128,10 @@ async def explain_bias(request: fp.QueryRequest, bias: str, argument: str) -> st
         str: An explanation of how the bias manifests in the argument.
     """
     try:
-        explanation_prompt = f"Explain how the {bias} is manifested in the following argument: {argument}"
+        explanation_prompt = (
+            f"Explain how the {bias} is manifested in the following argument: "
+            f"{argument}"
+        )
         explanation = ""
         async for msg in fp.stream_request(
             request, "Claude-instant", explanation_prompt
@@ -149,11 +157,32 @@ async def suggest_debiasing_strategies(
         AsyncIterable[fp.PartialResponse]: Suggested strategies for mitigating biases.
     """
     try:
-        prompt = f"Suggest strategies to mitigate the following cognitive biases: {', '.join(biases)}"
-        async for msg in fp.stream_request(request, "GPT-4"):
+        prompt = (
+            f"Suggest strategies to mitigate the following cognitive biases: "
+            f"{', '.join(biases)}"
+        )
+        async for msg in fp.stream_request(request, "GPT-4", prompt):
             yield fp.PartialResponse(text=msg.text)
     except Exception as e:
         logger.error(f"Error in suggest_debiasing_strategies: {e}")
         yield fp.PartialResponse(
             text="An error occurred while suggesting debiasing strategies."
         )
+
+
+async def get_user_choice(request: fp.QueryRequest) -> str:
+    """
+    Gets user choice using WebSocket or another method.
+
+    Parameters:
+        request (fp.QueryRequest): The request object.
+
+    Returns:
+        str: The user's choice.
+    """
+    # Implement this function based on your framework (e.g., WebSocket, HTTP request, etc.)
+    # Example using WebSocket (replace with your actual implementation)
+    # async for message in request.websocket:
+    #     user_choice = message.text
+    #     return user_choice
+    return "1"  # Placeholder return value

@@ -1,8 +1,87 @@
-from typing import AsyncIterable
+import os
+from cachetools import cached, TTLCache
+import aiohttp
+from core.bias_detection import get_user_choice
+from utils.helpers import extract_job_details, format_salary_data
+from fastapi_poe.client import BotError
+import logging
 import fastapi_poe as fp
 from utils.prompt_engineering import create_prompt
-from utils.external_api import fetch_salary_data
-import re
+from typing import AsyncIterable
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Adzuna API credentials from environment variables
+ADZUNA_API_ID = os.getenv("ADZUNA_API_ID", "your_default_id")
+ADZUNA_API_KEY = os.getenv("ADZUNA_API_KEY", "your_default_key")
+
+# Cache for API responses
+cache = TTLCache(maxsize=100, ttl=300)
+
+
+@cached(cache)
+async def fetch_salary_data(job_title: str, location: str) -> dict:
+    """
+    Fetches salary data from the Adzuna API.
+
+    Parameters:
+        job_title (str): The job title for which to fetch salary data.
+        location (str): The location where the job is based.
+
+    Returns:
+        dict: A dictionary containing the average salary and currency, or an error message.
+
+    Raises:
+        RuntimeError: If the API request fails.
+        ValueError: If the API response is invalid or no salary data is found.
+    """
+    base_url = "https://api.adzuna.com/v1/api/jobs/us/search/1"  # US endpoint
+
+    params = {
+        "app_id": ADZUNA_API_ID,
+        "app_key": ADZUNA_API_KEY,
+        "results_per_page": 10,  # Get up to 10 results for averaging
+        "what": job_title,
+        "where": location,
+        "content-type": "application/json",
+    }
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(base_url, params=params) as response:
+            if response.status == 200:
+                data = await response.json()
+                salaries = [
+                    (result.get("salary_min", 0) + result.get("salary_max", 0)) / 2
+                    for result in data["results"]
+                    if result.get("salary_min") is not None
+                    and result.get("salary_max") is not None
+                ]
+
+                if salaries:
+                    average_salary = sum(salaries) / len(salaries)
+                    currency = (
+                        data["results"][0].get("currency")
+                        if data["results"] and "currency" in data["results"][0]
+                        else "USD"
+                    )
+                    return {
+                        "average_salary": int(average_salary),  # Return as an integer
+                        "currency": currency,  # Default to USD if currency is not present
+                    }
+                else:
+                    raise ValueError("No salary data found for this job and location.")
+            elif response.status == 400:
+                raise ValueError("Invalid request parameters.")
+            elif response.status == 401:
+                raise ValueError("Invalid API credentials.")
+            elif response.status == 429:
+                raise ValueError("Too many requests.")
+            else:
+                raise RuntimeError(
+                    f"Adzuna API request failed: {response.status}, {response.text}"
+                )
 
 
 async def handle_salary_negotiation(
@@ -13,103 +92,81 @@ async def handle_salary_negotiation(
 
     Parameters:
         request (fp.QueryRequest): The request object containing user input and context.
-        user_input (str): The user's input regarding salary negotiation details.
+        user_input (str): The user's input describing their job details.
         user_data (dict): User-specific data for personalized responses.
 
     Yields:
-        AsyncIterable[fp.PartialResponse]: Responses providing salary negotiation advice.
+        AsyncIterable[fp.PartialResponse]: Responses to the user regarding salary negotiation.
     """
-    job_details = user_input.replace("salary", "").strip()
-    prompt = create_prompt("salary_negotiation", topic=job_details)
-
-    yield fp.PartialResponse(
-        text="Analyzing the job details and preparing negotiation advice...\n\n"
-    )
-
-    # Initial advice
-    async for msg in fp.stream_request(request, "GPT-4", prompt=prompt):
-        yield fp.PartialResponse(text=msg.text)
-
-    # Fetch and provide salary data
     try:
-        job_title, location = extract_job_and_location(job_details)
-        salary_data = await asyncio.to_thread(fetch_salary_data, job_title, location)
+        job_details = extract_job_details(user_input)
+        job_title = job_details["job_title"]
+        location = job_details["location"]
 
-        if "error" in salary_data:
-            yield fp.PartialResponse(text=f"Salary Insights: {salary_data['error']}")
-        else:
-            yield fp.PartialResponse(
-                text=f"Salary Insights:\nAverage Salary: ${salary_data['average_salary']} {salary_data['currency']}"
+        if not job_title or not location:
+            raise BotError(
+                "Please provide both your job title and location for salary negotiation advice."
             )
-    except Exception as e:
-        yield fp.PartialResponse(
-            text=f"Sorry, there was an error fetching salary data: {e}"
-        )
 
-    yield fp.PartialResponse(
-        text="\n\nWould you like to:\n"
-        "1. Practice a negotiation scenario?\n"
-        "2. Get advice on specific negotiation points?\n"
-        "3. Do something else?"
-    )
+        yield fp.PartialResponse(text="Fetching salary data for your job...\n\n")
 
-    # Handle user choice
-    user_choice = await request.get_next_message()
-    if "1" in user_choice.content or "practice" in user_choice.content.lower():
+        salary_data = await fetch_salary_data(job_title, location)
+        formatted_salary_data = format_salary_data(salary_data)
+        yield fp.PartialResponse(text=formatted_salary_data)
+
+        # Provide additional negotiation advice
         yield fp.PartialResponse(
-            text="Okay, let's practice. What's your proposed salary?"
+            text="\n\nHere are some additional tips for salary negotiation:\n\n"
         )
-        user_proposal = await request.get_next_message()
-        async for msg in await simulate_negotiation(
-            request, job_details, user_proposal.content
+        async for msg in fp.stream_request(
+            request,
+            "GPT-4",
+            create_prompt(
+                "salary_negotiation",
+                topic=f"Job title: {job_title}, Location: {location}, Average Salary: {formatted_salary_data}",
+            ),
         ):
-            yield msg
-    elif "2" in user_choice.content or "advice" in user_choice.content.lower():
+            yield fp.PartialResponse(text=msg.text)
+
         yield fp.PartialResponse(
-            text="Sure, tell me about the specific negotiation point you need advice on."
+            text="\n\nWould you like to: \n"
+            "1. Explore specific negotiation strategies?\n"
+            "2. Get advice on handling counter-offers?\n"
+            "3. Do something else?"
         )
-    else:
-        yield fp.PartialResponse(text="Alright, what else would you like to do?")
 
-
-def extract_job_and_location(job_details: str) -> tuple[str, str]:
-    """
-    Extracts job title and location from user input.
-
-    Parameters:
-        job_details (str): The user input containing job details.
-
-    Returns:
-        tuple[str, str]: A tuple containing the job title and location.
-    """
-    job_title = ""
-    location = ""
-
-    match = re.search(r"job title is\s*([^\.]+)", job_details, re.IGNORECASE)
-    if match:
-        job_title = match.group(1).strip()
-
-    match = re.search(r"location is\s*([^\.]+)", job_details, re.IGNORECASE)
-    if match:
-        location = match.group(1).strip()
-
-    return job_title, location
-
-
-async def simulate_negotiation(
-    request: fp.QueryRequest, job_details: str, user_proposal: str
-) -> AsyncIterable[fp.PartialResponse]:
-    """
-    Simulates a salary negotiation based on job details and the user's proposal.
-
-    Parameters:
-        request (fp.QueryRequest): The request object.
-        job_details (str): The job details relevant to the negotiation.
-        user_proposal (str): The user's proposed salary.
-
-    Yields:
-        AsyncIterable[fp.PartialResponse]: The simulated responses from the employer.
-    """
-    simulation_prompt = f"Simulate a salary negotiation for this job: {job_details}\n\nThe candidate has proposed: {user_proposal}\n\nProvide a realistic employer response and potential counter-offer."
-    async for msg in fp.stream_request(request, "GPT-4", prompt=simulation_prompt):
-        yield fp.PartialResponse(text=msg.text)
+        # Handle user choice for further actions
+        user_choice = await get_user_choice(
+            request
+        )  # Implement this function based on your framework
+        if "1" in user_choice or "strategies" in user_choice.lower():
+            yield fp.PartialResponse(text="Okay, let's explore some strategies.\n\n")
+            async for msg in fp.stream_request(
+                request,
+                "GPT-4",
+                create_prompt(
+                    "salary_negotiation",
+                    topic=f"Job title: {job_title}, Location: {location}, Average Salary: {formatted_salary_data}",
+                ),
+            ):
+                yield fp.PartialResponse(text=msg.text)
+        elif "2" in user_choice or "counter" in user_choice.lower():
+            yield fp.PartialResponse(
+                text="Okay, here's some advice on handling counter-offers.\n\n"
+            )
+            async for msg in fp.stream_request(
+                request,
+                "GPT-4",
+                create_prompt(
+                    "salary_negotiation",
+                    topic=f"Job title: {job_title}, Location: {location}, Average Salary: {formatted_salary_data}",
+                ),
+            ):
+                yield fp.PartialResponse(text=msg.text)
+        else:
+            yield fp.PartialResponse(text="Alright, what else would you like to do?")
+    except Exception as e:
+        logger.error(f"Error in handle_salary_negotiation: {e}")
+        yield fp.PartialResponse(
+            text="An error occurred while processing your request. Please try again."
+        )
