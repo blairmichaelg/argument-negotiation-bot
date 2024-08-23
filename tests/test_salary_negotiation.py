@@ -1,95 +1,70 @@
-# File: tests/test_salary_negotiation.py
 import pytest
 from unittest.mock import patch, AsyncMock
 from core.salary_negotiation import (
     handle_salary_negotiation,
-    extract_job_and_location,
-    simulate_negotiation,
+    extract_job_details,
+    format_salary_data,
+    fetch_salary_data,
 )
 import fastapi_poe as fp
 
 
-def test_handle_salary_negotiation_success():
-    mock_data = {"average_salary": 70000, "currency": "USD"}
-    with patch('core.salary_negotiation.fetch_salary_data', return_value=mock_data):
-        result = handle_salary_negotiation("Software Engineer", "New York")
-        assert result == mock_data
+@pytest.mark.asyncio
+async def test_handle_salary_negotiation():
+    request = AsyncMock(spec=fp.QueryRequest)
+    user_input = "Software Engineer in San Francisco"
+    user_data = {}
 
-
-def test_handle_salary_negotiation_api_failure():
     with patch(
-        'core.salary_negotiation.fetch_salary_data',
-        side_effect=RuntimeError("API request failed"),
-    ):
-        result = handle_salary_negotiation("Software Engineer", "New York")
-        assert result == {"error": "API request failed"}
+        "core.salary_negotiation.extract_job_details"
+    ) as mock_extract_job_details:
+        mock_extract_job_details.return_value = {
+            "job_title": "Software Engineer",
+            "location": "San Francisco",
+        }
 
+        with patch(
+            "core.salary_negotiation.fetch_salary_data"
+        ) as mock_fetch_salary_data:
+            mock_fetch_salary_data.return_value = {
+                "average_salary": 120000,
+                "currency": "USD",
+            }
 
-def test_handle_salary_negotiation_no_salary_data():
-    mock_data = {"error": "No salary data found for this job and location."}
-    with patch('core.salary_negotiation.fetch_salary_data', return_value=mock_data):
-        result = handle_salary_negotiation("Software Engineer", "Nowhere")
-        assert result == mock_data
+            with patch(
+                "core.salary_negotiation.format_salary_data"
+            ) as mock_format_salary_data:
+                mock_format_salary_data.return_value = "Average Salary: $120,000 USD"
 
+                responses = []
+                async for response in handle_salary_negotiation(
+                    request, user_input, user_data
+                ):
+                    responses.append(response)
 
-def test_extract_job_and_location_success():
-    job_details = "The job title is Software Engineer and the location is New York."
-    job_title, location = extract_job_and_location(job_details)
-    assert job_title == "Software Engineer"
-    assert location == "New York"
-
-
-def test_extract_job_and_location_missing_details():
-    job_details = "The job title is Software Engineer."
-    job_title, location = extract_job_and_location(job_details)
-    assert job_title == "Software Engineer"
-    assert location == ""
-
-
-def test_extract_job_and_location_invalid_format():
-    job_details = "Software Engineer in New York."
-    job_title, location = extract_job_and_location(job_details)
-    assert job_title == ""
-    assert location == ""
+                assert len(responses) > 0
+                assert "Average Salary: $120,000 USD" in responses[0].text
 
 
 @pytest.mark.asyncio
-class TestSimulateNegotiation:
-    @pytest.fixture
-    def mock_request(self):
-        return AsyncMock()
+async def test_extract_job_details():
+    user_input = "Software Engineer in San Francisco"
+    result = extract_job_details(user_input)
+    assert result["job_title"] == "Software Engineer"
+    assert result["location"] == "San Francisco"
 
-    @pytest.fixture
-    def mock_partial_response(self):
-        with patch('core.salary_negotiation.fp.PartialResponse') as mock:
-            yield mock
 
-    @pytest.fixture
-    def mock_stream_request(self):
-        with patch('core.salary_negotiation.fp.stream_request') as mock:
-            yield mock
+@pytest.mark.asyncio
+async def test_fetch_salary_data():
+    job_title = "Software Engineer"
+    location = "San Francisco"
+    result = await fetch_salary_data(job_title, location)
+    assert result["average_salary"] > 0
+    assert result["currency"] == "USD"
 
-    async def test_simulate_negotiation(
-        self, mock_request, mock_partial_response, mock_stream_request
-    ):
-        job_details = "Software Engineer in New York"
-        user_proposal = "100000"
 
-        mock_stream_request.return_value = AsyncMock(
-            __aiter__=AsyncMock(
-                return_value=[
-                    fp.PartialResponse(text="Simulated negotiation response"),
-                ]
-            )
-        )
-
-        responses = [
-            response
-            async for response in simulate_negotiation(
-                mock_request, job_details, user_proposal
-            )
-        ]
-
-        assert len(responses) > 0
-        mock_stream_request.assert_called_once()
-        assert responses[0].text == "Simulated negotiation response"
+@pytest.mark.asyncio
+async def test_format_salary_data():
+    salary_data = {"average_salary": 120000, "currency": "USD"}
+    result = format_salary_data(salary_data)
+    assert result == "Average Salary: $120,000 USD"

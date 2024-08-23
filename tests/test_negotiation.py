@@ -2,7 +2,7 @@
 
 from unittest import TestCase
 from unittest.mock import patch, AsyncMock
-from core.negotiation import generate_bot_response
+from core.negotiation import generate_bot_response, NegotiationScenario
 
 
 class TestGenerateBotResponse(TestCase):
@@ -24,8 +24,11 @@ class TestGenerateBotResponse(TestCase):
         scenario = "Test Scenario"
         user_offer = "Test Offer"
         state = {"user_offers": ["Test Offer 1"], "bot_responses": ["Test Response 1"]}
+        negotiation_scenario = NegotiationScenario(scenario, state)
 
-        response = await generate_bot_response(request, scenario, user_offer, state)
+        response = await generate_bot_response(
+            request, negotiation_scenario, user_offer
+        )
 
         self.assertIn("This is a bot response", response)
         self.assertIn("(Sentiment: Positive)", response)
@@ -42,8 +45,11 @@ class TestGenerateBotResponse(TestCase):
         scenario = "Test Scenario"
         user_offer = "Test Offer"
         state = {"user_offers": ["Test Offer 1"], "bot_responses": ["Test Response 1"]}
+        negotiation_scenario = NegotiationScenario(scenario, state)
 
-        response = await generate_bot_response(request, scenario, user_offer, state)
+        response = await generate_bot_response(
+            request, negotiation_scenario, user_offer
+        )
 
         self.assertEqual(
             response, "I'm having trouble responding right now. Please try again later."
@@ -62,7 +68,10 @@ class TestGenerateBotResponse(TestCase):
         scenario = "Test Scenario"
         user_offer = "Test Offer"
         state = {"user_offers": ["Test Offer 1"], "bot_responses": ["Test Response 1"]}
+        negotiation_scenario = NegotiationScenario(scenario, state)
 
-        response = await generate_bot_response(request, scenario, user_offer, state)
+        response = await generate_bot_response(
+            request, negotiation_scenario, user_offer
+        )
 
         self.assertEqual(response, "No response generated.")

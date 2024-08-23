@@ -17,7 +17,7 @@ class TestFactCheck:
             side_effect=[AsyncMock(content="fact check this statement")]
         )
         user_input = "fact check this statement"
-        # Remove the unused assignment statement
+        user_data = {}  # Add user_data as required by handle_fact_check
 
         with patch("core.fact_check.fp.stream_request") as mock_stream_request:
             mock_stream_request.return_value = AsyncMock(
@@ -31,7 +31,7 @@ class TestFactCheck:
             responses = [
                 response
                 async for response in handle_fact_check(
-                    request=request, statement=user_input
+                    request=request, user_input=user_input, user_data=user_data
                 )
             ]
 
@@ -43,8 +43,7 @@ class TestFactCheck:
             side_effect=[AsyncMock(content="invalid input")]
         )
         user_input = "invalid input"
-        # Remove the unused assignment statement
-        # user_data = {}
+        user_data = {}  # Add user_data as required by handle_fact_check
 
         with patch("core.fact_check.fp.stream_request") as mock_stream_request:
             mock_stream_request.return_value = AsyncMock(
@@ -58,7 +57,7 @@ class TestFactCheck:
             responses = [
                 response
                 async for response in handle_fact_check(
-                    request=request, statement=user_input
+                    request=request, user_input=user_input, user_data=user_data
                 )
             ]
 
