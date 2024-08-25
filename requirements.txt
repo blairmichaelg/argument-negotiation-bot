@@ -1,5 +1,4 @@
 fastapi-poe==0.0.47
-openai
 sqlalchemy
 uvicorn
 psycopg2-binary

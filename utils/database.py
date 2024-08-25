@@ -1,13 +1,14 @@
-from sqlalchemy import create_engine, Column, Integer, String, Text
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.ext.declarative import declarative_base
 import os
-from modal.secret import Secret
 
-# Database URL from Modal secrets
-SQLALCHEMY_DATABASE_URL = os.environ.get(
-    "DATABASE_URL", str(Secret.from_name("DATABASE_URL"))
-)
+from sqlalchemy import Column, Integer, String, Text, create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+
+# from modal.secret import Secret
+
+# Database URL from Modal secrets - REPLACE WITH YOUR ACTUAL DATABASE URL
+# For now, you can use an in-memory SQLite database for testing
+SQLALCHEMY_DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./test.db")
 
 # Create the database engine
 if str(SQLALCHEMY_DATABASE_URL).startswith("sqlite:///./"):
@@ -62,8 +63,8 @@ class NegotiationScenario(Base):
     bot_responses = Column(Text, default="[]")
 
 
-# Create all tables in the database
-Base.metadata.create_all(bind=engine)
+# Create all tables in the database - ONLY IF THEY DON'T EXIST
+Base.metadata.create_all(bind=engine, checkfirst=True)
 
 
 async def get_db():

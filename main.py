@@ -64,12 +64,13 @@ class ArgumentNegotiationBot(fp.PoeBot):
 
 # Define a deployment-ready function
 REQUIREMENTS = [
-    "fastapi-poe==0.0.36",
-    "openai",
+    "fastapi-poe==0.0.47",
     "sqlalchemy",
     "pydantic",
     "requests",
     "cachetools",
+    "aiohttp",
+    "nltk",
 ]
 image = Image.debian_slim().pip_install(*REQUIREMENTS)
 stub = Stub("argument-negotiation-bot")
