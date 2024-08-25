@@ -40,7 +40,6 @@ class TestHandleContractAnalysis:
         mock_stream_request: MagicMock | AsyncMock,
     ):
         user_input = "Analyze contract clause This is a test clause"
-        user_data = {}
 
         mock_stream_request.return_value = AsyncMock(
             __aiter__=AsyncMock(
@@ -55,9 +54,7 @@ class TestHandleContractAnalysis:
 
         responses = [
             response
-            async for response in handle_contract_analysis(
-                mock_request, user_input, user_data
-            )
+            async for response in handle_contract_analysis(mock_request, user_input)
         ]
 
         assert len(responses) > 0
@@ -83,15 +80,12 @@ class TestHandleContractAnalysis:
         mock_stream_request: MagicMock | AsyncMock,
     ):
         user_input = "Analyze contract clause This is a test clause"
-        user_data = {}
 
         mock_stream_request.side_effect = Exception("Test exception")
 
         responses = [
             response
-            async for response in handle_contract_analysis(
-                mock_request, user_input, user_data
-            )
+            async for response in handle_contract_analysis(mock_request, user_input)
         ]
 
         assert len(responses) > 0

@@ -59,7 +59,6 @@ class TestHandleBiasDetection:
         mock_suggest_debiasing_strategies: MagicMock | AsyncMock,
     ):
         user_input = "This is a test argument with cognitive bias"
-        user_data = {}
 
         mock_stream_request.return_value = AsyncMock(
             __aiter__=AsyncMock(
@@ -74,9 +73,7 @@ class TestHandleBiasDetection:
 
         responses = [
             response
-            async for response in handle_bias_detection(
-                mock_request, user_input, user_data
-            )
+            async for response in handle_bias_detection(mock_request, user_input)
         ]
 
         assert len(responses) > 0
@@ -109,7 +106,6 @@ class TestHandleBiasDetection:
         mock_suggest_debiasing_strategies: MagicMock | AsyncMock,
     ):
         user_input = "cognitive bias"
-        user_data = {}
 
         mock_stream_request.return_value = AsyncMock(
             __aiter__=AsyncMock(
@@ -123,9 +119,7 @@ class TestHandleBiasDetection:
 
         responses = [
             response
-            async for response in handle_bias_detection(
-                mock_request, user_input, user_data
-            )
+            async for response in handle_bias_detection(mock_request, user_input)
         ]
 
         assert len(responses) > 0
@@ -152,7 +146,6 @@ class TestHandleBiasDetection:
         mock_suggest_debiasing_strategies: MagicMock | AsyncMock,
     ):
         user_input = "This is a cached argument"
-        user_data = {}
         bias_cache[user_input] = ["Anchoring Bias"]
 
         mock_stream_request.return_value = AsyncMock(
@@ -167,9 +160,7 @@ class TestHandleBiasDetection:
 
         responses = [
             response
-            async for response in handle_bias_detection(
-                mock_request, user_input, user_data
-            )
+            async for response in handle_bias_detection(mock_request, user_input)
         ]
 
         assert len(responses) > 0
@@ -199,7 +190,6 @@ class TestHandleBiasDetection:
         mock_suggest_debiasing_strategies: MagicMock | AsyncMock,
     ):
         user_input = "This is a new argument"
-        user_data = {}
 
         mock_stream_request.return_value = AsyncMock(
             __aiter__=AsyncMock(
@@ -214,9 +204,7 @@ class TestHandleBiasDetection:
 
         responses = [
             response
-            async for response in handle_bias_detection(
-                mock_request, user_input, user_data
-            )
+            async for response in handle_bias_detection(mock_request, user_input)
         ]
 
         assert len(responses) > 0
@@ -246,15 +234,12 @@ class TestHandleBiasDetection:
         mock_suggest_debiasing_strategies: MagicMock | AsyncMock,
     ):
         user_input = "This will cause an error"
-        user_data = {}
 
         mock_stream_request.side_effect = Exception("Test Exception")
 
         responses = [
             response
-            async for response in handle_bias_detection(
-                mock_request, user_input, user_data
-            )
+            async for response in handle_bias_detection(mock_request, user_input)
         ]
 
         assert len(responses) > 0
@@ -264,3 +249,25 @@ class TestHandleBiasDetection:
         mock_get_user_choice.assert_not_called()
         mock_suggest_debiasing_strategies.assert_not_called()
         assert "An error occurred while processing your request" in responses[-1].text
+
+
+async def test_bias_cache(
+    self,
+    mock_request: AsyncMock,
+    mock_detect_specific_biases: MagicMock | AsyncMock,
+    mock_explain_bias: MagicMock | AsyncMock,
+):
+    user_input = "This is a test argument"
+    mock_detect_specific_biases.return_value = ["Confirmation Bias"]
+    mock_explain_bias.return_value = "Explanation of Confirmation Bias"
+
+    # First call should use detect_specific_biases
+    async for _ in handle_bias_detection(mock_request, user_input):
+        pass
+    mock_detect_specific_biases.assert_called_once()
+
+    # Second call should use cached result
+    mock_detect_specific_biases.reset_mock()
+    async for _ in handle_bias_detection(mock_request, user_input):
+        pass
+    mock_detect_specific_biases.assert_not_called()

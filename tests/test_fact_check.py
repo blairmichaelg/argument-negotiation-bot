@@ -1,5 +1,6 @@
 # File: tests/test_fact_check.py
 
+from fastapi_poe import BotError
 import pytest
 from unittest.mock import AsyncMock, patch
 from core.fact_check import handle_fact_check
@@ -17,7 +18,6 @@ class TestFactCheck:
             side_effect=[AsyncMock(content="fact check this statement")]
         )
         user_input = "fact check this statement"
-        user_data = {}  # Add user_data as required by handle_fact_check
 
         with patch("core.fact_check.fp.stream_request") as mock_stream_request:
             mock_stream_request.return_value = AsyncMock(
@@ -31,7 +31,7 @@ class TestFactCheck:
             responses = [
                 response
                 async for response in handle_fact_check(
-                    request=request, user_input=user_input, user_data=user_data
+                    request=request, user_input=user_input
                 )
             ]
 
@@ -43,7 +43,6 @@ class TestFactCheck:
             side_effect=[AsyncMock(content="invalid input")]
         )
         user_input = "invalid input"
-        user_data = {}  # Add user_data as required by handle_fact_check
 
         with patch("core.fact_check.fp.stream_request") as mock_stream_request:
             mock_stream_request.return_value = AsyncMock(
@@ -57,8 +56,23 @@ class TestFactCheck:
             responses = [
                 response
                 async for response in handle_fact_check(
-                    request=request, user_input=user_input, user_data=user_data
+                    request=request, user_input=user_input
                 )
             ]
 
         assert responses[0].text == "Invalid input for fact checking"
+
+
+async def test_handle_fact_check_no_statement(self):
+    request = AsyncMock()
+    user_input = "fact-check"
+
+    with pytest.raises(BotError, match="Please provide a statement to fact-check."):
+        async for _ in handle_fact_check(request, user_input):
+            pass
+        request = AsyncMock()
+        user_input = "fact-check"
+
+        with pytest.raises(BotError, match="Please provide a statement to fact-check."):
+            async for _ in handle_fact_check(request, user_input):
+                pass

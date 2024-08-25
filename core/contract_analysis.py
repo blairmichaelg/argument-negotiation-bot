@@ -1,18 +1,20 @@
+""" The functions in this module leverage the OpenAI API to analyze contract clauses, identify potential legal implications, suggest improvements, and provide sentiment analysis. """
+
 from typing import AsyncIterable, Dict
 import fastapi_poe as fp
 from utils.prompt_engineering import create_prompt
 from utils.error_handling import BotError
 
 import logging
-import json
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO)  # Change to DEBUG for more detailed logs
+logging.getLogger("transformers").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
 async def handle_contract_analysis(
-    request: fp.QueryRequest, user_input: str, user_data: dict
+    request: fp.QueryRequest, user_input: str
 ) -> AsyncIterable[fp.PartialResponse]:
     """
     Handles user requests for contract analysis.
@@ -20,7 +22,6 @@ async def handle_contract_analysis(
     Parameters:
         request (fp.QueryRequest): The request object containing user input and context.
         user_input (str): The user's input indicating the contract clause to analyze.
-        user_data (dict): User-specific data for personalized responses.
 
     Yields:
         AsyncIterable[fp.PartialResponse]: Responses to the user regarding contract analysis.
@@ -34,10 +35,13 @@ async def handle_contract_analysis(
 
     try:
         # Perform initial analysis of the contract clause
-        async for msg in fp.stream_request(
-            request, "GPT-4", create_prompt("contract_analysis", topic=clause)
-        ):
-            yield fp.PartialResponse(text=msg.text)  # Accessing the 'text' attribute
+        request.query.append(
+            fp.ProtocolMessage(
+                content=create_prompt("contract_analysis", topic=clause), role="user"
+            )
+        )
+        async for msg in fp.stream_request(request, "GPT-4", request.access_key):
+            yield fp.PartialResponse(text=msg.text)
 
         # Provide a detailed breakdown of the clause
         yield fp.PartialResponse(text="\n\nProviding a detailed breakdown:\n\n")
@@ -63,11 +67,11 @@ async def handle_contract_analysis(
         )
 
         # Handle user choice for further actions
-        user_choice = json.loads(request.json())
-        if any("1" in msg or "suggest" in msg.lower() for msg in user_choice):
+        user_choice = request.query[-1].content.lower()
+        if "1" in user_choice or "suggest" in user_choice:
             async for msg in suggest_improvements(request, clause):
                 yield msg
-        elif any("2" in msg or "analyze" in msg.lower() for msg in user_choice):
+        elif "2" in user_choice or "analyze" in user_choice:
             yield fp.PartialResponse(
                 text="Okay, please provide the new contract clause."
             )
@@ -95,10 +99,14 @@ async def get_detailed_breakdown(
     """
     breakdown = {}
     try:
-        async for msg in fp.stream_request(
-            request, "GPT-4", create_prompt("contract_analysis", topic=contract_clause)
-        ):
-            sections = msg.text.split('\n\n')  # Accessing the 'text' attribute
+        request.query.append(
+            fp.ProtocolMessage(
+                content=create_prompt("contract_analysis", topic=contract_clause),
+                role="user",
+            )
+        )
+        async for msg in fp.stream_request(request, "GPT-4", request.access_key):
+            sections = msg.text.split('\n\n')
             for section in sections:
                 if ':' in section:
                     key, value = section.split(':', 1)
@@ -121,12 +129,18 @@ async def get_legal_implications(request: fp.QueryRequest, contract_clause: str)
     """
     legal_analysis = ""
     try:
+        request.query.append(
+            fp.ProtocolMessage(
+                content=create_prompt("contract_analysis", topic=contract_clause),
+                role="user",
+            )
+        )
         async for msg in fp.stream_request(
             request,
             "Claude-instant",
-            create_prompt("contract_analysis", topic=contract_clause),
+            request.access_key,
         ):
-            legal_analysis += msg.text  # Accessing the 'text' attribute
+            legal_analysis += msg.text
     except Exception as e:
         logger.error(f"Error during legal implications analysis: {e}")
     return legal_analysis
@@ -147,10 +161,14 @@ async def suggest_improvements(
     """
 
     try:
-        async for msg in fp.stream_request(
-            request, "GPT-4", create_prompt("contract_analysis", topic=contract_clause)
-        ):
-            yield fp.PartialResponse(text=msg.text)  # Accessing the 'text' attribute
+        request.query.append(
+            fp.ProtocolMessage(
+                content=create_prompt("contract_analysis", topic=contract_clause),
+                role="user",
+            )
+        )
+        async for msg in fp.stream_request(request, "GPT-4", request.access_key):
+            yield fp.PartialResponse(text=msg.text)
     except Exception as e:
         logger.error(f"Error during suggestions for improvements: {e}")
 
@@ -168,10 +186,14 @@ async def get_sentiment_analysis(request: fp.QueryRequest, contract_clause: str)
     """
     sentiment_analysis = ""
     try:
-        async for msg in fp.stream_request(
-            request, "GPT-4", create_prompt("contract_analysis", topic=contract_clause)
-        ):
-            sentiment_analysis += msg.text  # Accessing the 'text' attribute
+        request.query.append(
+            fp.ProtocolMessage(
+                content=create_prompt("contract_analysis", topic=contract_clause),
+                role="user",
+            )
+        )
+        async for msg in fp.stream_request(request, "GPT-4", request.access_key):
+            sentiment_analysis += msg.text
     except Exception as e:
         logger.error(f"Error during sentiment analysis: {e}")
     return sentiment_analysis

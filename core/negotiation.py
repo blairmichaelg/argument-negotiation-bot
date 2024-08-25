@@ -9,7 +9,6 @@ from utils.database import (
     create_negotiation_scenario,
     get_negotiation_scenario_by_id,
     update_negotiation_scenario,
-    Column,
 )
 import logging
 
@@ -17,12 +16,9 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Negotiation state dictionary (replace with a more robust storage mechanism later)
-# negotiation_state: Dict[str, Dict] = {}
-
 
 async def handle_negotiation(
-    request: fp.QueryRequest, user_input: str, user_data: dict
+    request: fp.QueryRequest, user_input: str
 ) -> AsyncIterable[fp.PartialResponse]:
     """Handles user requests for generating negotiation scenarios."""
 
@@ -31,15 +27,21 @@ async def handle_negotiation(
         raise BotError("Please provide a negotiation scenario.")
 
     db = await get_db().__anext__()
-    negotiation_scenario = await get_negotiation_scenario_by_id(db, int(scenario))
+    scenario_id = int(scenario)
+    negotiation_scenario = await get_negotiation_scenario_by_id(db, int(scenario_id))
     if not negotiation_scenario:
         negotiation_scenario = await create_negotiation_scenario(db, scenario)
 
     # Generate negotiation scenario
+    request.query.append(
+        fp.ProtocolMessage(
+            content=create_prompt("negotiation", topic=scenario), role="user"
+        )
+    )
     async for msg in fp.stream_request(
         request,
         "GPT-4",
-        create_prompt("negotiation", topic=scenario),
+        request.access_key,
     ):
         yield fp.PartialResponse(text=msg.text)
 
@@ -48,24 +50,6 @@ async def handle_negotiation(
     # Handle user's opening offer or position and continue the negotiation.
     user_offer = request.query[-1].content
     db = await get_db().__anext__()
-
-    # Ensure negotiation_scenario.id is properly handled
-    negotiation_scenario_id = negotiation_scenario.id
-
-    if negotiation_scenario_id is not None:
-        try:
-            # Extract the actual value if it's a Column object
-            if isinstance(negotiation_scenario_id, Column):
-                negotiation_scenario_id = negotiation_scenario_id.value
-            negotiation_scenario_id = int(negotiation_scenario_id)
-        except (ValueError, TypeError):
-            raise BotError("Invalid negotiation scenario ID.")
-    else:
-        negotiation_scenario_id = 0
-
-    negotiation_scenario = await get_negotiation_scenario_by_id(
-        db, negotiation_scenario_id
-    )
 
     # Analyze the offer and provide feedback
     analysis_prompt = (
@@ -88,9 +72,10 @@ async def handle_negotiation(
     )
     db = await get_db().__anext__()
     negotiation_scenario = await get_negotiation_scenario_by_id(
-        db, negotiation_scenario.id
+        db, negotiation_scenario.id.value
     )
     if negotiation_scenario:
+        negotiation_scenario.user_offers.append(user_offer)
         negotiation_scenario.bot_responses.append(bot_response)
         await update_negotiation_scenario(
             db,
@@ -128,22 +113,32 @@ async def analyze_offer(
 ) -> AsyncIterable[fp.PartialResponse]:
     try:
         db = await get_db().__anext__()
-        negotiation_scenario = await get_negotiation_scenario_by_id(db, int(scenario))
+        scenario_id = int(scenario)
+        negotiation_scenario = await get_negotiation_scenario_by_id(db, scenario_id)
         if negotiation_scenario:
+            request.query.append(
+                fp.ProtocolMessage(
+                    content=create_prompt(
+                        "continue_negotiation",
+                        topic=scenario,
+                        user_offer=user_offer,
+                        user_offers=negotiation_scenario.user_offers,
+                        bot_responses=negotiation_scenario.bot_responses,
+                    ),
+                    role="user",
+                )
+            )
             async for msg in fp.stream_request(
                 request,
                 "GPT-4",
-                create_prompt(
-                    "continue_negotiation",
-                    topic=scenario,
-                    user_offer=user_offer,
-                    user_offers=negotiation_scenario.user_offers,
-                    bot_responses=negotiation_scenario.bot_responses,
-                ),
+                request.access_key,
             ):
                 yield fp.PartialResponse(text=msg.text)
+            request.query.append(
+                fp.ProtocolMessage(content=analysis_prompt, role="user")
+            )
             async for msg in fp.stream_request(
-                request, "GPT-3.5-Turbo", analysis_prompt
+                request, "GPT-3.5-Turbo", request.access_key
             ):
                 yield fp.PartialResponse(text=msg.text)
     except Exception as e:
@@ -156,7 +151,10 @@ async def provide_negotiation_tactics(
 ) -> AsyncIterable[fp.PartialResponse]:
     prompt = f"Provide advanced negotiation tactics and strategies for the following scenario: {scenario}"
     try:
-        async for msg in fp.stream_request(request, "Claude-instant", prompt):
+        request.query.append(fp.ProtocolMessage(content=prompt, role="user"))
+        async for msg in fp.stream_request(
+            request, "Claude-instant", request.access_key
+        ):
             yield fp.PartialResponse(text=msg.text)
     except Exception as e:
         yield fp.PartialResponse(text=f"Error providing negotiation tactics: {str(e)}")
@@ -171,26 +169,24 @@ async def continue_negotiation(
         db = await get_db().__anext__()
         negotiation_scenario = await get_negotiation_scenario_by_id(db, int(scenario))
         if negotiation_scenario:
+            request.query.append(
+                fp.ProtocolMessage(
+                    content=create_prompt(
+                        "continue_negotiation",
+                        topic=scenario,
+                        user_offer=user_offer,
+                        user_offers=negotiation_scenario.user_offers,
+                        bot_responses=negotiation_scenario.bot_responses,
+                    ),
+                    role="user",
+                )
+            )
             async for msg in fp.stream_request(
                 request,
                 "GPT-4",
-                create_prompt(
-                    "continue_negotiation",
-                    topic=scenario,
-                    user_offer=user_offer,
-                    user_offers=negotiation_scenario.user_offers,
-                    bot_responses=negotiation_scenario.bot_responses,
-                ),
+                request.access_key,
             ):
-                try:
-                    async for msg in fp.stream_request(
-                        request, "GPT-4", request.access_key
-                    ):
-                        yield fp.PartialResponse(text=msg.text)
-                except Exception as e:
-                    yield fp.PartialResponse(
-                        text=f"Error continuing negotiation: {str(e)}"
-                    )
+                yield fp.PartialResponse(text=msg.text)
     except Exception as e:
         yield fp.PartialResponse(text=f"Error continuing negotiation: {str(e)}")
 
@@ -199,18 +195,19 @@ async def generate_bot_response(
     request: fp.QueryRequest,
     scenario: str,
     user_offer: str,
-    negotiation_scenario=NegotiationScenario,
+    negotiation_scenario: NegotiationScenario,
 ) -> str:
     """Generates a bot response based on the user's offer and negotiation state."""
     prompt = (
         f"You are negotiating in the following scenario: {scenario}\n\n"
         f"The user has made the following offer: {user_offer}\n\n"
         f"Previous offers: {negotiation_scenario.user_offers}\n\n"
-        f"Previous bot responses: {negotiation_scenario.bot_responses}\n"
+        f"Previous bot responses: {negotiation_scenario.bot_responses}\n\n"
         f"Generate a realistic and strategic response to the user's offer."
     )
     try:
-        async for msg in fp.stream_request(request, "GPT-4", prompt):
+        request.query.append(fp.ProtocolMessage(content=prompt, role="user"))
+        async for msg in fp.stream_request(request, "GPT-4", request.access_key):
             response = msg.text
             sentiment = analyze_sentiment(response)
             return f"{response}\n\n(Sentiment: {sentiment})"

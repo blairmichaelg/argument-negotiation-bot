@@ -6,12 +6,7 @@ from .test_contract_analysis import TestHandleContractAnalysis
 from .test_debate import TestHandleDebate
 from .test_fact_check import TestFactCheck
 from .test_negotiation import TestGenerateBotResponse
-from .test_salary_negotiation import (
-    test_handle_salary_negotiation,
-    test_extract_job_details,
-    test_fetch_salary_data,
-    test_format_salary_data,
-)
+from .test_salary_negotiation import TestSalaryNegotiation
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -23,8 +18,5 @@ __all__ = [
     "TestHandleDebate",
     "TestFactCheck",
     "TestGenerateBotResponse",
-    "test_handle_salary_negotiation",
-    "test_extract_job_details",
-    "test_fetch_salary_data",
-    "test_format_salary_data",
+    "TestSalaryNegotiation",
 ]

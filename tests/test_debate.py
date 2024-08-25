@@ -1,5 +1,6 @@
 # File: tests/test_debate.py
 
+from fastapi_poe import BotError
 import pytest
 from unittest.mock import AsyncMock, patch
 from core.debate import handle_debate, generate_counterarguments
@@ -17,7 +18,6 @@ class TestHandleDebate:
             side_effect=[AsyncMock(content="pro"), AsyncMock(content="1")]
         )
         user_input = "debate climate change"
-        user_data = {}
 
         with patch("core.debate.fp.stream_request") as mock_stream_request:
             mock_stream_request.return_value = AsyncMock(
@@ -35,8 +35,7 @@ class TestHandleDebate:
             )
 
             responses = [
-                response
-                async for response in handle_debate(request, user_input, user_data)
+                response async for response in handle_debate(request, user_input)
             ]
 
         assert responses[0].text == "Debate on climate change"
@@ -54,7 +53,6 @@ class TestHandleDebate:
             side_effect=[AsyncMock(content="invalid"), AsyncMock(content="1")]
         )
         user_input = "debate climate change"
-        user_data = {}
 
         with patch("core.debate.fp.stream_request") as mock_stream_request:
             mock_stream_request.return_value = AsyncMock(
@@ -67,8 +65,7 @@ class TestHandleDebate:
             )
 
             responses = [
-                response
-                async for response in handle_debate(request, user_input, user_data)
+                response async for response in handle_debate(request, user_input)
             ]
 
         assert responses[0].text == "Debate on climate change"
@@ -92,3 +89,11 @@ class TestHandleDebate:
             ]
 
         assert responses[0].text == "Counterargument against pro side"
+
+        async def test_handle_debate_no_topic(self):
+            request = AsyncMock()
+            user_input = "debate"
+
+            with pytest.raises(BotError, match="Please provide a debate topic."):
+                async for _ in handle_debate(request, user_input):
+                    pass

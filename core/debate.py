@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 async def handle_debate(
-    request: fp.QueryRequest, user_input: str, user_data: dict
+    request: fp.QueryRequest, user_input: str
 ) -> AsyncIterable[fp.PartialResponse]:
     """
     Handles user requests for generating debates.
@@ -18,7 +18,6 @@ async def handle_debate(
     Parameters:
         request (fp.QueryRequest): The request object containing user input and context.
         user_input (str): The user's input indicating the debate topic.
-        user_data (dict): User-specific data for personalized responses.
 
     Yields:
         AsyncIterable[fp.PartialResponse]: Responses to the user regarding the debate.
@@ -27,9 +26,11 @@ async def handle_debate(
     if not topic:
         raise BotError("Please provide a debate topic.")
 
-    create_prompt("debate", topic=topic)
+    request.query.append(
+        fp.ProtocolMessage(content=create_prompt("debate", topic=topic), role="user")
+    )
 
-    async for msg in fp.stream_request(request, bot_name="GPT-4"):
+    async for msg in fp.stream_request(request, "GPT-4", request.access_key):
         yield msg  # Send the generated response to the user for the debate topic prompt
 
     yield fp.PartialResponse(
@@ -48,10 +49,15 @@ async def handle_debate(
         )
         return
 
-    create_prompt(
-        "debate", topic=f"Generate an argument {chosen_side} the topic: {topic}"
+    request.query.append(
+        fp.ProtocolMessage(
+            content=create_prompt(
+                "debate", topic=f"Generate an argument {chosen_side} the topic: {topic}"
+            ),
+            role="user",
+        )
     )
-    async for msg in fp.stream_request(request, bot_name="GPT-4"):
+    async for msg in fp.stream_request(request, "GPT-4", request.access_key):
         yield fp.PartialResponse(text=msg.text)
 
     yield fp.PartialResponse(
@@ -86,6 +92,11 @@ async def generate_counterarguments(
     Yields:
         AsyncIterable[fp.PartialResponse]: Counterarguments against the specified side.
     """
-    f"Generate strong counterarguments against the following argument: {side} the topic: {topic}"
-    async for msg in fp.stream_request(request, bot_name="GPT-4"):
+    request.query.append(
+        fp.ProtocolMessage(
+            content=f"Generate strong counterarguments against the following argument: {side} the topic: {topic}",
+            role="user",
+        )
+    )
+    async for msg in fp.stream_request(request, "GPT-4", request.access_key):
         yield fp.PartialResponse(text=msg.text)

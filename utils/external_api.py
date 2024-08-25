@@ -1,10 +1,11 @@
 import os
 from cachetools import cached, TTLCache
 import aiohttp
+from modal import Secret
 
-# Adzuna API credentials from environment variables
-ADZUNA_API_ID = os.getenv("ADZUNA_API_ID", "your_default_id")
-ADZUNA_API_KEY = os.getenv("ADZUNA_API_KEY", "your_default_key")
+# Adzuna API credentials from Modal secrets
+ADZUNA_API_ID = os.environ.get("ADZUNA_API_ID", Secret.from_name("ADZUNA_API_ID"))
+ADZUNA_API_KEY = os.environ.get("ADZUNA_API_KEY", Secret.from_name("ADZUNA_API_KEY"))
 
 # Cache for API responses
 cache = TTLCache(maxsize=100, ttl=300)

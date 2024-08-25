@@ -1,21 +1,24 @@
-import os
-from cachetools import cached, TTLCache
-import aiohttp
-from core.bias_detection import get_user_choice
-from utils.helpers import extract_job_details, format_salary_data
-from fastapi_poe.client import BotError
 import logging
-import fastapi_poe as fp
-from utils.prompt_engineering import create_prompt
 from typing import AsyncIterable
+
+import os
+import fastapi_poe as fp
+import aiohttp
+from cachetools import cached, TTLCache
+from fastapi_poe import BotError
+from modal import Secret
+
+from utils.helpers import extract_job_details, format_salary_data
+from utils.prompt_engineering import create_prompt
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Adzuna API credentials from environment variables
-ADZUNA_API_ID = os.getenv("ADZUNA_API_ID", "your_default_id")
-ADZUNA_API_KEY = os.getenv("ADZUNA_API_KEY", "your_default_key")
+# Adzuna API credentials from Modal secrets
+ADZUNA_API_ID = os.environ.get("ADZUNA_API_ID", Secret.from_name("ADZUNA_API_ID"))
+ADZUNA_API_KEY = os.environ.get("ADZUNA_API_KEY", Secret.from_name("ADZUNA_API_KEY"))
+
 
 # Cache for API responses
 cache = TTLCache(maxsize=100, ttl=300)
@@ -85,7 +88,7 @@ async def fetch_salary_data(job_title: str, location: str) -> dict:
 
 
 async def handle_salary_negotiation(
-    request: fp.QueryRequest, user_input: str, user_data: dict
+    request: fp.QueryRequest, user_input: str
 ) -> AsyncIterable[fp.PartialResponse]:
     """
     Handles user requests for salary negotiation advice.
@@ -93,7 +96,6 @@ async def handle_salary_negotiation(
     Parameters:
         request (fp.QueryRequest): The request object containing user input and context.
         user_input (str): The user's input describing their job details.
-        user_data (dict): User-specific data for personalized responses.
 
     Yields:
         AsyncIterable[fp.PartialResponse]: Responses to the user regarding salary negotiation.
@@ -118,14 +120,16 @@ async def handle_salary_negotiation(
         yield fp.PartialResponse(
             text="\n\nHere are some additional tips for salary negotiation:\n\n"
         )
-        async for msg in fp.stream_request(
-            request,
-            "GPT-4",
-            create_prompt(
-                "salary_negotiation",
-                topic=f"Job title: {job_title}, Location: {location}, Average Salary: {formatted_salary_data}",
-            ),
-        ):
+        request.query.append(
+            fp.ProtocolMessage(
+                content=create_prompt(
+                    "salary_negotiation",
+                    topic=f"Job title: {job_title}, Location: {location}, Average Salary: {formatted_salary_data}",
+                ),
+                role="user",
+            )
+        )
+        async for msg in fp.stream_request(request, "GPT-4", request.access_key):
             yield fp.PartialResponse(text=msg.text)
 
         yield fp.PartialResponse(
@@ -136,32 +140,34 @@ async def handle_salary_negotiation(
         )
 
         # Handle user choice for further actions
-        user_choice = await get_user_choice(
-            request
-        )  # Implement this function based on your framework
-        if "1" in user_choice or "strategies" in user_choice.lower():
+        user_choice = request.query[-1].content.lower()
+        if "1" in user_choice or "strategies" in user_choice:
             yield fp.PartialResponse(text="Okay, let's explore some strategies.\n\n")
-            async for msg in fp.stream_request(
-                request,
-                "GPT-4",
-                create_prompt(
-                    "salary_negotiation",
-                    topic=f"Job title: {job_title}, Location: {location}, Average Salary: {formatted_salary_data}",
-                ),
-            ):
+            request.query.append(
+                fp.ProtocolMessage(
+                    content=create_prompt(
+                        "salary_negotiation",
+                        topic=f"Job title: {job_title}, Location: {location}, Average Salary: {formatted_salary_data}",
+                    ),
+                    role="user",
+                )
+            )
+            async for msg in fp.stream_request(request, "GPT-4", request.access_key):
                 yield fp.PartialResponse(text=msg.text)
-        elif "2" in user_choice or "counter" in user_choice.lower():
+        elif "2" in user_choice or "counter" in user_choice:
             yield fp.PartialResponse(
                 text="Okay, here's some advice on handling counter-offers.\n\n"
             )
-            async for msg in fp.stream_request(
-                request,
-                "GPT-4",
-                create_prompt(
-                    "salary_negotiation",
-                    topic=f"Job title: {job_title}, Location: {location}, Average Salary: {formatted_salary_data}",
-                ),
-            ):
+            request.query.append(
+                fp.ProtocolMessage(
+                    content=create_prompt(
+                        "salary_negotiation",
+                        topic=f"Job title: {job_title}, Location: {location}, Average Salary: {formatted_salary_data}",
+                    ),
+                    role="user",
+                )
+            )
+            async for msg in fp.stream_request(request, "GPT-4", request.access_key):
                 yield fp.PartialResponse(text=msg.text)
         else:
             yield fp.PartialResponse(text="Alright, what else would you like to do?")

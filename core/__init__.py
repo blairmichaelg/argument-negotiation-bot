@@ -1,13 +1,13 @@
-"""Utility modules for the Argument and Negotiation Master Bot."""
+"""Core modules for the Argument and Negotiation Master Bot."""
 
 from .debate import handle_debate
 from .negotiation import handle_negotiation
-from .fact_check import handle_fact_check
-from .bias_detection import handle_bias_detection
-from .contract_analysis import handle_contract_analysis
-from .salary_negotiation import handle_salary_negotiation
+from . import handle_fact_check
+from . import handle_bias_detection
+from . import handle_contract_analysis
+from . import handle_salary_negotiation
 
-# from . import error_handling
+from . import error_handling
 from utils.prompt_engineering import create_prompt, PROMPT_TEMPLATES
 
 __all__ = [
@@ -19,4 +19,5 @@ __all__ = [
     "handle_salary_negotiation",
     "create_prompt",
     "PROMPT_TEMPLATES",
+    "error_handling",
 ]

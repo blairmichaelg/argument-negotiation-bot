@@ -1,5 +1,5 @@
 import re
-from typing import List
+from typing import List, Dict
 
 import nltk
 from nltk.sentiment import SentimentIntensityAnalyzer
@@ -59,7 +59,7 @@ def generate_dynamic_follow_up_questions(text: str) -> List[str]:
     return questions
 
 
-def extract_job_details(text: str) -> dict:
+def extract_job_details(text: str) -> Dict[str, str | None]:
     """
     Extracts job title and location from user input.
 
@@ -67,7 +67,7 @@ def extract_job_details(text: str) -> dict:
         text (str): The user's input text.
 
     Returns:
-        dict: A dictionary containing the extracted job title and location.
+        Dict[str, str | None]: A dictionary containing the extracted job title and location.
     """
     job_title = None
     location = None
