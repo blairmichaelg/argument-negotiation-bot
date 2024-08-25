@@ -1,24 +1,23 @@
-import os
 import logging
 from typing import AsyncIterable
 
-import openai
-from fastapi import FastAPI
-from modal import Image, Stub, asgi_app, Secret
 import fastapi_poe as fp
+from fastapi import FastAPI
+from modal import Image, Secret, Stub, asgi_app
 
-from core import (
-    handle_debate,
-    handle_negotiation,
-    handle_fact_check,
-    handle_bias_detection,
-    handle_contract_analysis,
-    handle_salary_negotiation,
-)
+from core.bias_detection import handle_bias_detection
+from core.contract_analysis import handle_contract_analysis
+from core.debate import handle_debate
+from core.fact_check import handle_fact_check
+from core.negotiation import handle_negotiation
+from core.salary_negotiation import handle_salary_negotiation
 from utils.error_handling import handle_error, validate_input
 
+# Removed openai import as it's not needed
+
+
 # --- Configuration ---
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", Secret.from_name("OPENAI_API_KEY"))
+# Removed OPENAI_API_KEY as OpenAI API is not used
 
 # --- Logging Configuration ---
 logging.basicConfig(level=logging.INFO)
@@ -34,9 +33,6 @@ FUNCTIONALITY_KEYWORDS = {
     "contract": handle_contract_analysis,
     "salary": handle_salary_negotiation,
 }
-
-# --- OpenAI Initialization ---
-openai.api_key = OPENAI_API_KEY
 
 
 # --- Bot Class ---
@@ -68,11 +64,7 @@ class ArgumentNegotiationBot(fp.PoeBot):
 
     async def get_settings(self, setting: fp.SettingsRequest) -> fp.SettingsResponse:
         return fp.SettingsResponse(
-            server_bot_dependencies={
-                "GPT-3.5-Turbo": 5,
-                "Claude-instant": 3,
-                "GPT-4": 2,
-            },
+            server_bot_dependencies={},
             allow_attachments=True,
             expand_text_attachments=True,
             enable_image_comprehension=False,
@@ -91,7 +83,6 @@ poe_bot.app = app
 # --- Modal Setup ---
 REQUIREMENTS = [
     "fastapi-poe==0.0.47",
-    "openai",
     "sqlalchemy",
     "uvicorn",
     "psycopg2-binary",
@@ -107,7 +98,6 @@ stub = Stub("argument-negotiation-bot")
     image=image,
     secrets=[
         Secret.from_name("DATABASE_URL"),
-        Secret.from_name("OPENAI_API_KEY"),
         Secret.from_name("ADZUNA_API_ID"),
         Secret.from_name("ADZUNA_API_KEY"),
     ],

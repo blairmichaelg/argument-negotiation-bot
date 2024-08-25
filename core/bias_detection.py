@@ -1,25 +1,49 @@
 """ This module contains functions for detecting cognitive biases in user arguments and suggesting debiasing strategies."""
 
-from typing import AsyncIterable, List, Dict
-import fastapi_poe as fp
-from utils.prompt_engineering import create_prompt
 import logging
+from typing import AsyncIterable, Dict, List
+
+import fastapi_poe as fp
 from fastapi_poe.client import BotError
 
+from utils.prompt_engineering import create_prompt
+
 # Initialize logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)  # Set the logging level to INFO
+logger = logging.getLogger(__name__)  # Create a logger for this module
 
 # List of common cognitive biases
 COMMON_BIASES = [
+    "Fundamental Attribution Error",
+    "Self-Serving Bias",
     "Confirmation Bias",
     "Anchoring Bias",
     "Availability Heuristic",
-    "Framing Effect",
+    "Halo Effect",
+    "Hindsight Bias",
+    "Overconfidence Effect",
+    "Recency Bias",
+    "Status Quo Bias",
+    "Survivorship Bias",
+    "Base Rate Fallacy",
     "Dunning-Kruger Effect",
     "Bandwagon Effect",
     "Negativity Bias",
     "Sunk Cost Fallacy",
+    "Loss Aversion",
+    "Framing Effect",
+    "Illusion of Control",
+    "Optimism Bias",
+    "Planning Fallacy",
+    "Selection Bias",
+    "Belief Perseverance",
+    "Cognitive Dissonance",
+    "In-group Bias",
+    "Gambler's Fallacy",
+    "Reactance",
+    "Outcome Bias",
+    "Illusory Correlation",
+    "Empathy Gap",
 ]
 
 # Cache for detected biases to improve performance

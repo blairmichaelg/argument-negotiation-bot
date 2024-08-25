@@ -1,21 +1,29 @@
-# .pre-commit-config.yaml
-repos:
+# Configuration for pre-commit
+
+repos:  # List of repositories to use for hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:
-      - id: trailing-whitespace
-      - id: end-of-file-fixer
-      - id: check-yaml
-      - id: check-json
+      - id: trailing-whitespace # Trims trailing whitespace
+      - id: end-of-file-fixer # Ensures files end in a newline
+      - id: check-yaml  # Check yaml syntax
+      - id: check-json  # Check json syntax
   - repo: https://github.com/psf/black
     rev: 22.3.0
     hooks:
-      - id: black
+      - id: black # Black is the uncompromising Python code formatter
+        args: [--skip-string-normalization] # Skip string normalization
   - repo: https://github.com/pycqa/flake8
     rev: 6.0.0
     hooks:
-      - id: flake8
+      - id: flake8  # Flake8 is a wrapper around these tools: pycodestyle, pyflakes, mccabe, and more
         additional_dependencies:
-          - flake8-bugbear
-          - flake8-comprehensions
-          - flake8-simplify
+          - flake8-bugbear  # Additional flake8 rules to catch bugs
+          - flake8-comprehensions # Additional flake8 rules for comprehensions and generator expressions
+          - flake8-simplify # Additional flake8 rules for simplifying code
+  - repo: https://github.com/pre-commit/mirrors-isort
+    rev: v5.10.1
+    hooks:
+      - id: isort # Isort is a Python utility / library to sort imports alphabetically, and automatically separated into sections and by type
+        args: [--profile, black] # Use the black profile for isort
+        additional_dependencies: [isort==5.10.1] # Use isort 5.10.1
