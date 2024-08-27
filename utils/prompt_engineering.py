@@ -1,4 +1,8 @@
-from typing import Dict, Any
+import logging
+from typing import Any, Dict
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 
 # Dictionary to store prompt templates for different functionalities
 PROMPT_TEMPLATES: Dict[str, str] = {
@@ -25,9 +29,31 @@ def create_prompt(functionality: str, **kwargs: Any) -> str:
 
     Raises:
         ValueError: If the functionality is not found in the PROMPT_TEMPLATES dictionary.
+        KeyError: If required keyword arguments are missing.
+        TypeError: If the provided arguments are not of the expected type.
+
+    Example:
+        create_prompt("debate", topic="Climate Change")
     """
+    logging.info(
+        f"Creating prompt for functionality: {functionality} with arguments: {kwargs}"
+    )
+
+    if not isinstance(functionality, str):
+        raise TypeError("Functionality must be a string.")
+
+    if functionality not in PROMPT_TEMPLATES:
+        logging.error(f"Functionality {functionality} not found.")
+        raise ValueError(
+            f"No prompt template found for: {functionality}. Available functionalities: {list(PROMPT_TEMPLATES.keys())}"
+        )
+
+    prompt_template = PROMPT_TEMPLATES[functionality]
+
     try:
-        prompt_template = PROMPT_TEMPLATES[functionality]
-        return prompt_template.format(**kwargs)
-    except KeyError:
-        raise ValueError(f"No prompt template found for: {functionality}")
+        prompt = prompt_template.format(**kwargs)
+        logging.info(f"Prompt created successfully: {prompt}")
+        return prompt
+    except KeyError as e:
+        logging.error(f"Missing required argument: {e.args[0]}")
+        raise KeyError(f"Missing required argument: {e.args[0]}")

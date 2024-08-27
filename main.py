@@ -3,7 +3,7 @@ import logging
 import fastapi_poe as fp
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from modal import Image, Stub, asgi_app
+from modal import Image, Secret, Stub, asgi_app
 
 from core import (
     handle_bias_detection,
@@ -76,7 +76,14 @@ image = Image.debian_slim().pip_install(*REQUIREMENTS)
 stub = Stub("argument-negotiation-bot")
 
 
-@stub.function(image=image)
+@stub.function(
+    image=image,
+    secrets=[
+        Secret.from_name("ADZUNA_API_ID"),
+        Secret.from_name("ADZUNA_API_KEY"),
+        Secret.from_name("DATABASE_URL"),
+    ],
+)
 @asgi_app()
 def fastapi_app():
     bot = ArgumentNegotiationBot()
