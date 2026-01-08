@@ -1,200 +1,255 @@
-# Argument and Negotiation Master Bot
+<div align="center">
 
-This bot is designed to assist with debates, negotiations, fact-checking, cognitive bias detection, contract analysis, and salary negotiations.
+# 🤖 Argument & Negotiation Master Bot
 
-## Table of Contents
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688.svg)](https://fastapi.tiangolo.com)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-- [Introduction](#introduction)
-- [Features](#features)
-- [Project Structure](#project-structure)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Configuration](#configuration)
-- [Deployment](#deployment)
-- [Testing](#testing)
-- [Contributing](#contributing)
-- [License](#license)
+*An AI-powered bot that helps you master debates, negotiations, fact-checking, and more.*
 
-## Introduction
+[Features](#-features) • [Installation](#-installation) • [Usage](#-usage) • [Documentation](#-documentation) • [Contributing](#-contributing)
 
-The Argument and Negotiation Master Bot is a versatile tool designed to assist users in various scenarios such as debates, negotiations, fact-checking, cognitive bias detection, contract analysis, and salary negotiations. It leverages advanced AI models to provide insightful and accurate responses.
+</div>
 
-## Features
+---
 
-- **Debate Assistance**: Generate and analyze arguments for and against a given topic.
-- **Negotiation Support**: Provide negotiation tactics and analyze offers.
-- **Fact-Checking**: Verify the accuracy of statements.
-- **Cognitive Bias Detection**: Identify cognitive biases in arguments.
-- **Contract Analysis**: Analyze contract clauses for potential issues.
-- **Salary Negotiation**: Offer advice on salary negotiations.
+## 📖 Overview
 
-## Project Structure
+The **Argument & Negotiation Master Bot** is a versatile AI-powered assistant designed to help users navigate complex conversational scenarios. Built on FastAPI and leveraging advanced language models, it provides intelligent support for debates, negotiations, fact-checking, cognitive bias detection, contract analysis, and salary negotiations.
 
-```markdown
-argument-negotiation-bot/
-├── __pycache__/
-├── .flake8
-├── .gitignore
-├── .pre-commit-config.yaml
-├── .pytest_cache/
-│   ├── .gitignore
-│   ├── CACHEDIR.TAG
-│   ├── README.md
-│   └── v/
-├── .vscode/
-│   └── settings.json
-├── core/
-│   ├── __init__.py
-│   ├── __pycache__/
-│   ├── bias_detection.py
-│   ├── contract_analysis.py
-│   ├── debate.py
-│   ├── fact_check.py
-│   ├── negotiation.py
-│   └── salary_negotiation.py
-├── improvement-deployment-plan.md
-├── LICENSE
-├── main.py
-├── modal_deploy.py
-├── overall-development-plan
-├── PoeServerBotGuide.txt
-├── pyproject.toml
-├── README.md
-├── requirements.in
-├── requirements.txt
-├── server-bot-quick-start/
-│   ├── .flake8
-│   └── ...
-├── tests/
-│   ├── __init__.py
-│   ├── __pycache__/
-│   ├── test_bias_detection.py
-│   ├── test_contract_analysis.py
-│   ├── test_debate.py
-│   ├── test_fact_check.py
-│   ├── test_negotiation.py
-│   └── test_salary_negotiation.py
-├── utils/
-│   ├── __init__.py
-│   ├── __pycache__/
-│   ├── database.py
-│   ├── error_handling.py
-│   ├── external_api.py
-│   ├── helpers.py
-│   └── prompt_engineering.py
-├── venv/
-│   └──
+## ✨ Features
+
+### 🎯 Core Capabilities
+
+- **💬 Debate Assistance** - Generate compelling arguments for both sides of any topic, practice counterarguments, and refine your debating skills
+- **🤝 Negotiation Support** - Receive strategic negotiation tactics, analyze offers, and craft persuasive responses
+- **✅ Fact-Checking** - Verify the accuracy of statements and claims with AI-powered analysis
+- **🧠 Cognitive Bias Detection** - Identify logical fallacies and cognitive biases in arguments to strengthen reasoning
+- **📄 Contract Analysis** - Review contract clauses for potential issues, legal implications, and improvement suggestions
+- **💰 Salary Negotiation** - Get data-driven advice for salary negotiations with market insights
+
+### 🛠️ Technical Highlights
+
+- Built with **FastAPI** for high-performance async API handling
+- Integration with multiple AI models (GPT-4, GPT-3.5-Turbo, Claude)
+- Comprehensive test coverage with pytest
+- Database integration with SQLAlchemy
+- Error handling and logging
+- Pre-commit hooks for code quality
+- Ready for deployment on Modal
+
+## 🚀 Tech Stack
+
+![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
+![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-D71F00?style=for-the-badge&logo=sqlalchemy&logoColor=white)
+![NLTK](https://img.shields.io/badge/NLTK-154f3c?style=for-the-badge&logo=python&logoColor=white)
+![Pytest](https://img.shields.io/badge/Pytest-0A9EDC?style=for-the-badge&logo=pytest&logoColor=white)
+
+**Core Technologies:**
+- **FastAPI** - Modern, fast web framework for building APIs
+- **fastapi-poe** - Poe Platform integration for bot deployment
+- **SQLAlchemy** - SQL toolkit and ORM
+- **NLTK** - Natural Language Processing toolkit
+- **aiohttp** - Async HTTP client/server
+- **Modal** - Serverless deployment platform
+
+## 📦 Installation
+
+### Prerequisites
+
+- Python 3.12 or higher
+- pip package manager
+- (Optional) Virtual environment tool
+
+### Quick Start
+
+1. **Clone the repository**
+
+```bash
+git clone https://github.com/blairmichaelg/argument-negotiation-bot.git
+cd argument-negotiation-bot
 ```
 
-## Installation
+2. **Create and activate a virtual environment**
 
-1. **Clone the repository**:
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
 
-    ```sh
-    git clone https://github.com/yourusername/argument-negotiation-bot.git
-    cd argument-negotiation-bot
-    ```
+3. **Install dependencies**
 
-2. **Install dependencies**:
+```bash
+pip install -r requirements.txt
+```
 
-    ```sh
-    pip install -r requirements.txt
-    ```
+4. **Set up pre-commit hooks** (optional but recommended)
 
-3. **Set up pre-commit hooks**:
+```bash
+pre-commit install
+```
 
-    ```sh
-    pre-commit install
-    ```
+5. **Configure environment variables**
 
-## Usage
+Create a `.env` file in the project root:
 
-1. **Run the bot locally**:
+```env
+DATABASE_URL=sqlite:///./argument_negotiation_bot.db
+ADZUNA_API_ID=your_api_id_here
+ADZUNA_API_KEY=your_api_key_here
+```
 
-    ```sh
-    uvicorn main:app --reload
-    ```
+## 🎮 Usage
 
-2. **Interact with the bot**:
-    Access the bot at [`http://localhost:8000`](http://localhost:8000) and use the `/process` endpoint to send messages.
+### Running Locally
 
-## Configuration
+Start the development server:
 
-- **Environment Variables**:
-  - `DATABASE_URL`: URL for
+```bash
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
 
- the
+The bot will be available at `http://localhost:8000`
 
- database connection.
-    - `OPENAI_API_KEY`: API key for OpenAI.
+### Interacting with the Bot
 
-- **Logging Configuration**:
-    Configure logging settings in [`main.py`](command:_github.copilot.openRelativePath?%5B%7B%22scheme%22%3A%22file%22%2C%22authority%22%3A%22%22%2C%22path%22%3A%22%2Fc%3A%2FUsers%2FProjects%2Fargument-negotiation-bot%2Fmain.py%22%2C%22query%22%3A%22%22%2C%22fragment%22%3A%22%22%7D%5D "c:\Users\Projects\argument-negotiation-bot\main.py") using the `configure_logging` function.
+The bot responds to keyword-based requests. Here are some examples:
 
-## Deployment
+- **Debate**: "Help me debate the topic: Should AI replace human jobs?"
+- **Negotiation**: "I need help with negotiation tactics for a business deal"
+- **Fact-check**: "Can you fact-check this statement: The Earth is flat"
+- **Cognitive bias**: "Identify cognitive biases in this argument: ..."
+- **Contract**: "Analyze this contract clause: ..."
+- **Salary**: "Help me negotiate a salary for a Software Engineer position in San Francisco"
 
-We recommend using Modal for deployment. Follow these steps:
+### API Endpoints
 
-1. **Install the Modal client**:
+The bot implements the Poe Protocol and provides standard endpoints for message processing. See the [Poe Server Bot Guide](https://creator.poe.com/docs/server-bots-introduction) for details.
 
-    ```sh
-    pip install modal-client
-    ```
+## 🧪 Testing
 
-2. **Set up your Modal token**:
+Run the full test suite:
 
-    ```sh
-    modal token new --source poe
-    ```
+```bash
+pytest
+```
 
-3. **Deploy to Modal**:
+Run specific test modules:
 
-    ```sh
-    git clone https://github.com/poe-platform/server-bot-quick-start
-    cd server-bot-quick-start
-    pip install -r requirements.txt
-    modal deploy echobot.py
-    ```
+```bash
+pytest tests/test_debate.py
+pytest tests/test_negotiation.py
+```
 
-## Testing
+Run with coverage:
 
-1. **Run unit tests**:
+```bash
+pytest --cov=core --cov=utils --cov-report=html
+```
 
-    ```sh
-    pytest
-    ```
+## 📚 Documentation
 
-2. **Test individual functionalities**:
-    Each core functionality has its own test file in the [`tests/`](command:_github.copilot.openRelativePath?%5B%7B%22scheme%22%3A%22file%22%2C%22authority%22%3A%22%22%2C%22path%22%3A%22%2Fc%3A%2FUsers%2FProjects%2Fargument-negotiation-bot%2Ftests%2F%22%2C%22query%22%3A%22%22%2C%22fragment%22%3A%22%22%7D%5D "c:\Users\Projects\argument-negotiation-bot\tests\") directory.
+### Project Structure
 
-## Contributing
+```
+argument-negotiation-bot/
+├── core/                    # Core functionality modules
+│   ├── bias_detection.py    # Cognitive bias detection
+│   ├── contract_analysis.py # Contract review and analysis
+│   ├── debate.py            # Debate assistance
+│   ├── fact_check.py        # Fact-checking functionality
+│   ├── negotiation.py       # Negotiation support
+│   └── salary_negotiation.py # Salary negotiation advice
+├── utils/                   # Utility modules
+│   ├── database.py          # Database models and operations
+│   ├── error_handling.py    # Error handling utilities
+│   ├── external_api.py      # External API integrations
+│   ├── helpers.py           # Helper functions
+│   └── prompt_engineering.py # AI prompt templates
+├── tests/                   # Test suite
+├── main.py                  # Application entry point
+├── requirements.txt         # Python dependencies
+└── pyproject.toml          # Project configuration
+```
 
-We welcome contributions! Please follow these steps:
+### Configuration
 
-1. **Fork the repository**.
-2. **Create a new branch**:
+Key configuration options in `main.py`:
 
-    ```sh
-    git checkout -b feature/your-feature-name
-    ```
+- **Bot Dependencies**: Configure which AI models to use
+- **Logging**: Adjust logging levels and handlers
+- **Database**: Configure database connection settings
 
-3. **Make your changes**.
-4. **Commit your changes**:
+## 🚢 Deployment
 
-    ```sh
-    git commit -m "Add your commit message"
-    ```
+### Deploy to Modal
 
-5. **Push to the branch**:
+The bot is designed for easy deployment on Modal:
 
-    ```sh
-    git push origin feature/your-feature-name
-    ```
+1. **Install Modal**
 
-6. **Create a Pull Request**.
+```bash
+pip install modal
+```
 
-## License
+2. **Set up Modal authentication**
 
-This project is licensed under the 3-Clause BSD License. See the [`LICENSE`](command:_github.copilot.openRelativePath?%5B%7B%22scheme%22%3A%22file%22%2C%22authority%22%3A%22%22%2C%22path%22%3A%22%2Fc%3A%2FUsers%2FProjects%2Fargument-negotiation-bot%2FLICENSE%22%2C%22query%22%3A%22%22%2C%22fragment%22%3A%22%22%7D%5D "c:\Users\Projects\argument-negotiation-bot\LICENSE") file for details.
+```bash
+modal token new --source poe
+```
 
-Feel free to customize this README further based on your specific needs and additional details about your project.
+3. **Configure secrets in Modal dashboard**
+
+Add the following secrets in your Modal dashboard:
+- `ADZUNA_API_ID`
+- `ADZUNA_API_KEY`
+- `DATABASE_URL`
+
+4. **Deploy**
+
+```bash
+modal deploy main.py
+```
+
+### Other Deployment Options
+
+The bot can also be deployed to:
+- **Heroku**: Use the included `Procfile` (if present) or create one
+- **AWS Lambda**: With appropriate serverless adapters
+- **Docker**: Containerize the application for any platform
+
+## 🤝 Contributing
+
+We welcome contributions from the community! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details on:
+
+- Code of Conduct
+- Development setup
+- Pull request process
+- Coding standards
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Built with [FastAPI](https://fastapi.tiangolo.com/)
+- Powered by [Poe Platform](https://poe.com/)
+- AI models from OpenAI and Anthropic
+- Salary data from [Adzuna API](https://developer.adzuna.com/)
+
+## 📧 Contact
+
+**Blair Michael G** - [@blairmichaelg](https://github.com/blairmichaelg)
+
+Project Link: [https://github.com/blairmichaelg/argument-negotiation-bot](https://github.com/blairmichaelg/argument-negotiation-bot)
+
+---
+
+<div align="center">
+Made with ❤️ by the community
+</div>
